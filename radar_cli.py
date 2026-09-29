@@ -322,7 +322,18 @@ def cmd_dedupe(conn, apply=False):
 
 
 STOPWORDS = {"and", "the", "for", "with", "of", "in", "on", "a", "an", "to", "x"}
-NON_TECH_SOURCES = {"latestly", "yahoo sports", "mix 94.9", "narooma news"}
+NON_TECH_SOURCES = {
+    "latestly",
+    "yahoo sports",
+    "mix 94.9",
+    "narooma news",
+    "sports illustrated",
+    "bradenton herald",
+    "reno gazette journal",
+    "yakima herald-republic",
+    "the berkshire eagle",
+    "brattleboro reformer",
+}
 
 
 def _keywords(text):
@@ -331,6 +342,22 @@ def _keywords(text):
 
 
 def cmd_link(conn, top_n=56):
+    """Attach to each OS its top_n signals by keyword overlap.
+
+    Linking only ever adds rows, so links made before a source joined
+    NON_TECH_SOURCES are removed first; otherwise the filter would only
+    apply to new links.
+    """
+    placeholders = ",".join("?" * len(NON_TECH_SOURCES))
+    removed = conn.execute(
+        f"""DELETE FROM opportunity_signals WHERE signal_id IN (
+               SELECT id FROM signals
+               WHERE lower(trim(coalesce(source_name, ''))) IN ({placeholders}))""",
+        sorted(NON_TECH_SOURCES),
+    ).rowcount
+    conn.commit()
+    if removed:
+        print(f"Removed {removed} existing link(s) to non-tech sources.\n")
     spaces = get_all_opportunity_spaces(conn)
     for os_row in spaces:
         target_keywords = _keywords(f"{os_row['use_case']} {os_row['technology']}")
@@ -432,31 +459,36 @@ def cmd_scores(conn):
 
 
 def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
-    rows = get_latest_scores(conn)
-    if not rows:
+    """Write the client-facing markdown summary of scored opportunity spaces.
+
+    "Not yet scored" is computed against every scored OS, before the --top
+    cut, so an OS left out by --top is never reported as unscored.
+    """
+    scored_rows = get_latest_scores(conn)
+    if not scored_rows:
         print(
             "No scored opportunity spaces yet -- run `radar_cli.py create` then `python -m pipeline.scoring`."
         )
         return
+    rows = scored_rows
     if top_n:
         rows = sorted(rows, key=lambda r: r["total_score"], reverse=True)[:top_n]
         print(
-            f"--top {top_n}: keeping the {len(rows)} highest-attractiveness opportunity space(s) out of {len(get_latest_scores(conn))} scored."
+            f"--top {top_n}: keeping the {len(rows)} highest-attractiveness opportunity space(s) out of {len(scored_rows)} scored."
         )
     all_spaces = get_all_opportunity_spaces(conn)
-    scored_ids = {r["id"] for r in rows}
+    scored_ids = {r["id"] for r in scored_rows}
     unscored = [s for s in all_spaces if s["id"] not in scored_ids]
+    header = f"_{len(scored_rows)}/{len(all_spaces)} opportunity spaces scored"
+    if len(rows) < len(scored_rows):
+        header += f", top {len(rows)} by attractiveness shown"
+    if unscored:
+        header += f" -- {len(unscored)} not yet scored, see bottom of file"
     lines = [
         "# Innovation Radar — Opportunity Spaces Summary",
         f"_Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}_",
         "",
-        f"_{len(rows)}/{len(all_spaces)} opportunity spaces scored"
-        + (
-            f" -- {len(unscored)} not yet scored, see bottom of file"
-            if unscored
-            else ""
-        )
-        + "._",
+        header + "._",
         "",
         "| OS | Attractiveness | Right-to-win | Distance | Urgency |",
         "|---|---|---|---|---|",
@@ -477,8 +509,8 @@ def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
         )
         lines.append("")
         lines.append(f"**Attractiveness: {r['total_score']}/10**")
-        lines.append(f"- Market signal strength: {r['market_signal_strength']}")
-        lines.append(f"- Source diversity: {r['source_diversity']}")
+        lines.append(f"- Market signal strength: {round(r['market_signal_strength'], 2)}")
+        lines.append(f"- Source diversity: {round(r['source_diversity'], 2)}")
         lines.append(
             f"- Evidence quality: {r['evidence_quality']} — {r['evidence_quality_justification']}"
         )

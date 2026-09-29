@@ -73,3 +73,30 @@ revisit it. Append only — never rewrite a past entry.
 - **Kept on purpose:** `radar_cli_top_15.py` and its summary output.
 - **Revisit if:** never -- informational.
 
+## 2026-09-29 — Summary count, one name per source, relink, rescore
+
+- **What:** `radar_cli.py summary --top N` no longer reports the OS left out
+  by the cut as "not yet scored", and rounds the sub-scores it prints.
+  Google News results for TED and EUR-Lex are stored under one source name
+  each (`ingest.TED_SOURCE_NAME`, `ingest.EURLEX_SOURCE_NAME`); in radar.db,
+  77 `ted.europa.eu` and 251 `consultaelectoral.onpe.gob.pe` rows (EUR-Lex
+  documents mirrored on another domain) were renamed. `radar_cli.py link`
+  now removes existing links to `NON_TECH_SOURCES` before linking, and six
+  sports/local outlets were added to that set. Then `link`,
+  `scoring --force --from=OS128 --to=OS135` (Groq) and `scoring --refresh`
+  were re-run.
+- **Why:** the summary claimed 118 of 133 OS were unscored when all were;
+  TED and EUR-Lex each counted as two sources in `source_diversity`;
+  OS128-OS135 had been scored with no linked signal; the non-tech filter
+  only applied to new links.
+- **Changes the numbers:** links 2,899 -> 3,319, 0 OS without signals
+  (was 8), 82 attractiveness totals moved (max 7.74 points), quadrants
+  strong/needs capability/moderate/low = 12/4/87/30 -> 17/6/81/29.
+- **Still open:** 12 links (6 articles from general outlets such as The
+  Hindu or Yahoo News) are off-topic keyword matches ("Natasha Cloud" ->
+  Cloud, "energy sector" strikes -> Energy). Requiring at least 2 shared
+  keywords in `link` would remove most of them but changes every link --
+  team decision.
+- **Removed:** `docs/taxonomy_extensions.json` (unused copy),
+  `docs/extend_taxonomy.md` (outdated design note),
+  `opportunity_spaces_summary_top_15.md` (stale 27/08 output).

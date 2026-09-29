@@ -98,14 +98,23 @@ def _start_logging():
     return (log_path, log_file, original_stdout)
 
 
-def fetch_google_news(conn, vertical, query, signal_type="market_move", max_items=15):
+def fetch_google_news(
+    conn, vertical, query, signal_type="market_move", max_items=15, source_name=None
+):
+    """Collect Google News RSS results as signals.
+
+    source_name overrides the publisher name when the query targets one known
+    source (TED, EUR-Lex), so source_diversity counts it as that source
+    instead of as the name of whichever site mirrors the document.
+    """
     url = "https://news.google.com/rss/search?q=" + urllib.parse.quote(query) + "&hl=en"
     feed = feedparser.parse(url)
     count = 0
     for entry in feed.entries[:max_items]:
         added = insert_signal(
             conn,
-            source_name=entry.get("source", {}).get("title", "Google News"),
+            source_name=source_name
+            or entry.get("source", {}).get("title", "Google News"),
             source_url=entry.get("link"),
             signal_type=signal_type,
             title=entry.get("title"),
@@ -116,6 +125,9 @@ def fetch_google_news(conn, vertical, query, signal_type="market_move", max_item
         count += added
     return count
 
+
+TED_SOURCE_NAME = "TED - EU Public Procurement"
+EURLEX_SOURCE_NAME = "EUR-Lex"
 
 GDELT_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; InnovationRadar/1.0)"}
 
@@ -370,7 +382,7 @@ def fetch_ted(conn, vertical, query, signal_type="buying_signal", max_items=25):
         )
         added = insert_signal(
             conn,
-            source_name="TED - EU Public Procurement",
+            source_name=TED_SOURCE_NAME,
             source_url=url,
             signal_type=signal_type,
             title=combined_title,
@@ -529,6 +541,7 @@ def run_full_refresh():
                 q["vertical"],
                 q["query"],
                 signal_type="regulation",
+                source_name=EURLEX_SOURCE_NAME,
             )
         if ENABLE_TED:
             for q in TED_QUERIES:
@@ -552,6 +565,7 @@ def run_full_refresh():
                     q["vertical"],
                     q["query"],
                     signal_type="buying_signal",
+                    source_name=TED_SOURCE_NAME,
                 )
         remaining = _cooldown_remaining_minutes(
             "semantic_scholar", SEMANTIC_SCHOLAR_COOLDOWN_MINUTES

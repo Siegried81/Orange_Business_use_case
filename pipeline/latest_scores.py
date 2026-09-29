@@ -1,7 +1,7 @@
 """
 Prints only the MOST RECENT score per opportunity space -- useful if you ran
 scoring.py more than once (e.g. once on Ollama, once on Groq), since
-insert_score() / insert_right_to_win_score() always INSERT, never overwrite.
+older databases can still hold several score rows per opportunity space.
 
 Run:
     python latest_scores.py
@@ -16,7 +16,7 @@ from pipeline.db import get_connection, get_latest_run_id
 conn = get_connection()
 run_id = get_latest_run_id(conn)
 if run_id is None:
-    print("No opportunity spaces found -- run create_opportunity_spaces.py first.")
+    print("No opportunity spaces found -- run `python radar_cli.py create` first.")
     conn.close()
     raise SystemExit
 print(f"Run: {run_id}\n")

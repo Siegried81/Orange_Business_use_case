@@ -503,3 +503,119 @@ class TestQuadrant:
 
         assert quadrant(None, 5) is None
         assert quadrant(8, float("nan")) is None
+
+
+class TestSummaryHeader:
+    """The --top cut must not make scored opportunity spaces look unscored."""
+
+    def test_top_cut_is_not_reported_as_unscored(self, db_conn, tmp_path):
+        import radar_cli
+
+        for i in range(3):
+            os_id = _insert_opportunity_space(
+                db_conn, f"OS00{i}", use_case=f"Use case {i}"
+            )
+            _insert_score(db_conn, os_id, total_score=5.0 + i)
+            _insert_right_to_win(db_conn, os_id)
+        out = tmp_path / "summary.md"
+        radar_cli.cmd_summary(db_conn, output_path=str(out), top_n=1)
+        text = out.read_text(encoding="utf-8")
+        assert "3/3 opportunity spaces scored, top 1 by attractiveness shown" in text
+        assert "not yet scored" not in text
+
+    def test_really_unscored_os_is_still_reported(self, db_conn, tmp_path):
+        import radar_cli
+
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        _insert_score(db_conn, os_id)
+        _insert_right_to_win(db_conn, os_id)
+        _insert_opportunity_space(db_conn, "OS002", use_case="Other")
+        out = tmp_path / "summary.md"
+        radar_cli.cmd_summary(db_conn, output_path=str(out))
+        assert "1/2 opportunity spaces scored -- 1 not yet scored" in out.read_text(
+            encoding="utf-8"
+        )
+
+    def test_sub_scores_are_shown_rounded(self, db_conn, tmp_path):
+        import radar_cli
+
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        _insert_score(db_conn, os_id)
+        db_conn.execute(
+            "UPDATE scores SET market_signal_strength = ?, source_diversity = ?",
+            (55 / 7, 10 / 3),
+        )
+        _insert_right_to_win(db_conn, os_id)
+        out = tmp_path / "summary.md"
+        radar_cli.cmd_summary(db_conn, output_path=str(out))
+        text = out.read_text(encoding="utf-8")
+        assert "- Market signal strength: 7.86" + chr(10) in text
+        assert "- Source diversity: 3.33" + chr(10) in text
+
+
+class TestGoogleNewsSourceName:
+    """The TED fallback must store TED under the same name as the TED API."""
+
+    def _feed(self):
+        from types import SimpleNamespace
+
+        entry = {
+            "source": {"title": "ted.europa.eu"},
+            "link": "https://ted.europa.eu/notice/1",
+            "title": "Tender for network services",
+            "summary": None,
+            "published": "Mon, 01 Sep 2026 10:00:00 GMT",
+        }
+        return SimpleNamespace(entries=[entry])
+
+    def test_override_replaces_publisher_name(self, db_conn, monkeypatch):
+        from pipeline import ingest
+
+        monkeypatch.setattr(ingest.feedparser, "parse", lambda url: self._feed())
+        ingest.fetch_google_news(
+            db_conn, "Retail", "q", source_name=ingest.TED_SOURCE_NAME
+        )
+        row = db_conn.execute("SELECT source_name FROM signals").fetchone()
+        assert row["source_name"] == "TED - EU Public Procurement"
+
+    def test_default_keeps_publisher_name(self, db_conn, monkeypatch):
+        from pipeline import ingest
+
+        monkeypatch.setattr(ingest.feedparser, "parse", lambda url: self._feed())
+        ingest.fetch_google_news(db_conn, "Retail", "q")
+        row = db_conn.execute("SELECT source_name FROM signals").fetchone()
+        assert row["source_name"] == "ted.europa.eu"
+
+class TestLinkNonTechSources:
+    """link must drop old links to non-tech sources and never add new ones."""
+
+    def test_existing_non_tech_link_is_removed(self, db_conn):
+        import radar_cli
+
+        os_id = _insert_opportunity_space(
+            db_conn, "OS001", use_case="Fire detection", technology="Cloud"
+        )
+        for source, title in [
+            ("Sports Illustrated", "Cloud of fire over the stadium"),
+            ("Tech Monitor", "Cloud fire detection for factories"),
+        ]:
+            insert_signal(
+                db_conn,
+                source_name=source,
+                source_url=f"https://example.com/{source}",
+                signal_type="market_move",
+                title=title,
+                summary=None,
+                published_date=None,
+                vertical_hint="Manufacturing",
+            )
+        sport_id = db_conn.execute(
+            "SELECT id FROM signals WHERE source_name = 'Sports Illustrated'"
+        ).fetchone()["id"]
+        link_signal_to_opportunity(db_conn, os_id, sport_id)
+        radar_cli.cmd_link(db_conn)
+        sources = [
+            s["source_name"]
+            for s in get_linked_signals_for_opportunity_space(db_conn, os_id)
+        ]
+        assert sources == ["Tech Monitor"]
