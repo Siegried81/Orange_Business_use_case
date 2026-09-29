@@ -38,7 +38,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   └── check_healthcare.py       # vertical diagnostic query
 ├── docs/
 │   ├── decisions.md              # dated decision log
-│   └── README_6questions.md      # project Q&A and interview prep
+│   └── technical_deep_dive.md    # score formulas, modules, bugs fixed, open issues
 ├── radar.db                      # SQLite database (generated, not tracked)
 ├── .env.example                   # required environment variables (no real keys)
 ├── requirements.txt

@@ -54,3 +54,5 @@ radar.db-journal
 # opportunity_spaces_summary.md
 logs/*
 .vscode/
+# Personal interview/presentation prep notes, kept local only
+docs/README_6questions.md
