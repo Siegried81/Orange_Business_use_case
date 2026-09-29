@@ -1,0 +1,14 @@
+# Healthcare — Opportunity Spaces (27/08/2026)
+
+Sortie de `python -m tests.check_healthcare`, 8 OS Healthcare.
+
+| ID | Label | Attractiveness Score | Right-to-Win Score | Portfolio Distance |
+|---|---|---|---|---|
+| 118 | OS056 | 4.31 | 6.0 | L3 |
+| 103 | OS040 | 3.96 | 6.1 | L3 |
+| 97 | OS035 | 3.89 | 8.8 | L1 |
+| 89 | OS027 | 4.75 | 7.0 | L3 |
+| 116 | OS054 | 5.27 | 8.8 | L1 |
+| 162 | OS100 | 5.03 | 9.0 | L1 |
+| 168 | OS106 | 5.27 | 8.7 | L1 |
+| 130 | OS068 | 3.64 | 9.0 | L1 |

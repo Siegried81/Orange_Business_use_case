@@ -1,0 +1,8 @@
+feedparser
+requests
+groq
+python-dotenv
+streamlit
+plotly
+pandas
+pytest
