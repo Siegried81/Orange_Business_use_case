@@ -594,11 +594,17 @@ def main():
     sub.add_parser("link")
     sub.add_parser("themes")
     sub.add_parser("scores")
-    sub.add_parser("summary").add_argument(
+    summary_parser = sub.add_parser("summary")
+    summary_parser.add_argument(
         "--top",
         type=int,
         default=None,
         help="keep only the N highest-attractiveness opportunity spaces (default: all)",
+    )
+    summary_parser.add_argument(
+        "--output",
+        default="opportunity_spaces_summary.md",
+        help="markdown file to write (default: opportunity_spaces_summary.md)",
     )
     sub.add_parser("all").add_argument("--force", action="store_true")
     sub.add_parser("review")
@@ -626,7 +632,7 @@ def main():
     elif args.command == "scores":
         cmd_scores(conn)
     elif args.command == "summary":
-        cmd_summary(conn, top_n=args.top)
+        cmd_summary(conn, output_path=args.output, top_n=args.top)
     elif args.command == "review":
         cmd_review(conn)
     conn.close()

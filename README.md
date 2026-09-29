@@ -71,6 +71,7 @@ python radar_cli.py promote        # register recurring themes
 python radar_cli.py link           # attach signals to each opportunity space
 python -m pipeline.scoring         # score (LLM); --refresh recomputes the deterministic sub-scores only
 python radar_cli.py summary        # write opportunity_spaces_summary.md
+python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
 python -m pytest                   # run the tests (no network needed)
 ```
