@@ -1,0 +1,24 @@
+{
+  "name": "Orange Flashy",
+  "dataColors": [
+    "#FF7900",
+    "#00C8FF",
+    "#FF2D87",
+    "#22D16B",
+    "#8A3FFC",
+    "#FFC400",
+    "#FF3D3D",
+    "#1F6FFF",
+    "#00D1B2",
+    "#C724B1",
+    "#A6D608",
+    "#FF8FA3"
+  ],
+  "good": "#22D16B",
+  "neutral": "#FFC400",
+  "bad": "#FF3D3D",
+  "maximum": "#FF7900",
+  "center": "#FFC400",
+  "minimum": "#00C8FF",
+  "tableAccent": "#FF7900"
+}

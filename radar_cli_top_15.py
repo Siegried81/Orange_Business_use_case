@@ -405,8 +405,11 @@ def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
         lines.append(f"- Novelty / momentum: {r['novelty_momentum']}")
         lines.append(f"- Strategic relevance: {r['strategic_relevance']} — {r['strategic_relevance_justification']}")
         lines.append("")
-        lines.append(f"**Urgency: {r['urgency_score']}/10** — deterministic, +2 per regulation/buying_signal "
-                      f"signal linked to this OS (is there a real deadline, separate from attractiveness).")
+        # Same wording as radar_cli.py; describes pipeline/scoring.py::_urgency_weighted.
+        lines.append(f"**Urgency: {r['urgency_score']}/10** — deterministic: each linked regulation signal counts "
+                      f"in full, each buying signal (tender) fades with age, plus a novelty term; scaled against "
+                      f"the 95th percentile across opportunity spaces (is there a real deadline, separate from "
+                      f"attractiveness).")
         lines.append("")
         lines.append(f"**Right-to-win: {r['right_to_win_score']}/10 [{r['portfolio_distance']}]**")
         lines.append(f"- Matched assets: {r['matched_assets'] or 'none'}")

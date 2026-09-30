@@ -1,0 +1,1828 @@
+{
+  "compatibilityLevel": 1606,
+  "model": {
+    "annotations": [
+      {
+        "name": "__PBI_TimeIntelligenceEnabled",
+        "value": "0"
+      },
+      {
+        "name": "PBI_QueryOrder",
+        "value": "[\"DataFolder\", \"Opportunity Spaces\", \"Scores\", \"Signals\", \"Opportunity Signals\", \"Assets\", \"Export Info\"]"
+      },
+      {
+        "name": "PBI_ProTooling",
+        "value": "[\"DevMode\"]"
+      }
+    ],
+    "culture": "fr-FR",
+    "cultures": [
+      {
+        "name": "fr-FR",
+        "linguisticMetadata": {
+          "content": {
+            "Entities": {
+              "assets.asset": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Assets",
+                    "ConceptualProperty": "Asset"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Orange Business Asset": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.display_label": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Display Label"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Opportunity Space": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.horizon": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Horizon"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Horizon": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.owning_team": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Owning Team"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Owning Team": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.run_id": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Run ID"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Run ID": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.technology": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Technology"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Technology": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.use_case": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Use Case"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Use Case": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "opportunity_spaces.vertical": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Opportunity Spaces",
+                    "ConceptualProperty": "Vertical"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Vertical": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "scores.attractiveness_score": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Scores",
+                    "ConceptualProperty": "Attractiveness Score"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Attract.": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Attractiveness": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "scores.portfolio_distance": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Scores",
+                    "ConceptualProperty": "Portfolio Distance"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Portfolio Distance": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "scores.righttowin_score": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Scores",
+                    "ConceptualProperty": "Right-to-Win Score"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "RTW": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Right-to-Win": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "scores.urgency_score": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Scores",
+                    "ConceptualProperty": "Urgency Score"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Urgency": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.collected_date": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Collected Date"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Collected": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.grounding_signal_count": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Grounding Signal Count"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Signals": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.published_on": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Published On"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Published": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.signal_type": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Signal Type"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Signal Type": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Type": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.signals": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "# Signals"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "#": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Signal Mix": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Signal Volume": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.source": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Source"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Source Name": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Source": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.source_url": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Source URL"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Link": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.title": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Title"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Title": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              },
+              "signals.vertical_hint": {
+                "Definition": {
+                  "Binding": {
+                    "ConceptualEntity": "Signals",
+                    "ConceptualProperty": "Vertical Hint"
+                  }
+                },
+                "State": "Generated",
+                "Terms": [
+                  {
+                    "Vertical Hint": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  },
+                  {
+                    "Vertical": {
+                      "Source": {
+                        "Agent": "PowerBI.VisualColumnRename",
+                        "Type": "External"
+                      },
+                      "State": "Suggested",
+                      "Weight": 0.9
+                    }
+                  }
+                ]
+              }
+            },
+            "Language": "en-US",
+            "Version": "2.0.0"
+          },
+          "contentType": "json"
+        }
+      }
+    ],
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": true
+    },
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "expressions": [
+      {
+        "name": "DataFolder",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Text"
+          }
+        ],
+        "description": "Folder written by scripts/export_powerbi.py (keep the trailing backslash).",
+        "expression": "\"D:\\Users\\Siegried\\Desktop\\Becode\\Orange_Business_use_case\\app\\powerbi_data\\\" meta [IsParameterQuery = true, Type = \"Text\", IsParameterQueryRequired = true]",
+        "kind": "m",
+        "lineageTag": "48384c84-f27c-4f5e-9b62-994196f44390"
+      }
+    ],
+    "relationships": [
+      {
+        "name": "scores_to_space",
+        "crossFilteringBehavior": "bothDirections",
+        "fromCardinality": "one",
+        "fromColumn": "opportunity_space_id",
+        "fromTable": "Scores",
+        "toColumn": "id",
+        "toTable": "Opportunity Spaces"
+      },
+      {
+        "name": "link_to_space",
+        "fromColumn": "opportunity_space_id",
+        "fromTable": "Opportunity Signals",
+        "toColumn": "id",
+        "toTable": "Opportunity Spaces"
+      },
+      {
+        "name": "link_to_signal",
+        "crossFilteringBehavior": "bothDirections",
+        "fromColumn": "signal_id",
+        "fromTable": "Opportunity Signals",
+        "toColumn": "id",
+        "toTable": "Signals"
+      },
+      {
+        "name": "asset_to_space",
+        "crossFilteringBehavior": "bothDirections",
+        "fromColumn": "opportunity_space_id",
+        "fromTable": "Assets",
+        "toColumn": "id",
+        "toTable": "Opportunity Spaces"
+      }
+    ],
+    "sourceQueryCulture": "fr-BE",
+    "tables": [
+      {
+        "name": "Opportunity Spaces",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "7fe7ff32-3a48-4175-8a3c-d651edf2b331",
+            "sourceColumn": "id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Run ID",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "description": "Pipeline run that last registered or refreshed this opportunity space (UTC).",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "9780b276-655a-45da-82b1-484a1c047bf6",
+            "sourceColumn": "run_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Label",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "cae31a06-5b15-4ac4-9fb2-c64b07e107f1",
+            "sourceColumn": "label",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Vertical",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "a98d5f73-e210-4a2d-80db-d401ba735c88",
+            "sourceColumn": "vertical",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Use Case",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "ff52257a-f685-4c6e-9831-8342e84eb75d",
+            "sourceColumn": "use_case",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Technology",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "07a0e416-69b6-4b76-93cd-5a67fafde3b7",
+            "sourceColumn": "technology",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Created At",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "949a55fc-a2e4-4302-b125-f13a037307dd",
+            "sourceColumn": "created_at",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Last Refreshed",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "09689923-f82a-4868-aa2c-31cfb4d15438",
+            "sourceColumn": "last_refreshed",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Owning Team",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "Orange Business team that owns the opportunity (Strategist / Sales / Presales).",
+            "lineageTag": "d7671481-910f-4248-975e-c4112ec7a1cc",
+            "sourceColumn": "persona",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Geography",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "4c3197ac-5c94-4894-9f7c-f50a36b0b71f",
+            "sourceColumn": "geography",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Horizon",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "7b1a1457-40a4-4c15-93c1-a6ae824a3b2f",
+            "sortByColumn": "Horizon Order",
+            "sourceColumn": "horizon",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Horizon Order",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "33931f84-f1d5-4746-9681-26b75d6bc727",
+            "sourceColumn": "Horizon Order",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Next Action",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "08111f9c-c72d-4bfc-ae61-c7cc412b534d",
+            "sourceColumn": "next_action",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Domain",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "d70fd1e3-b717-4098-9af3-8ad5ae50a532",
+            "sourceColumn": "domain",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Buyer Persona",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "d39465d9-7ee1-4060-a57b-101c751ff9c6",
+            "sourceColumn": "buyer_persona",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Next Action (Strategist)",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "e6095047-97cd-46c9-83cd-ad8802a19062",
+            "sourceColumn": "next_action_strategist",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Next Action (Sales)",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "887e8ea9-e771-4094-9e80-be88dd4170f5",
+            "sourceColumn": "next_action_sales",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Next Action (Presales)",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "7f0ba208-e46e-476a-bb56-d99d586f3249",
+            "sourceColumn": "next_action_presales",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Display Label",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "Label plus run date; the drillthrough key.",
+            "lineageTag": "7d34725a-102a-479b-9d4c-c2043d2d7309",
+            "sourceColumn": "Display Label",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Run Date",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd",
+            "lineageTag": "0f4e29bc-86b1-46e6-9945-5929a2ae147b",
+            "sourceColumn": "Run Date",
+            "summarizeBy": "none"
+          }
+        ],
+        "lineageTag": "0c4223ca-3d73-463a-979d-8cc0f63d3fe6",
+        "partitions": [
+          {
+            "name": "Opportunity Spaces",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"opportunity_spaces.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"id\", Int64.Type}, {\"run_id\", type datetime}, {\"label\", type text}, {\"vertical\", type text}, {\"use_case\", type text}, {\"technology\", type text}, {\"created_at\", type datetime}, {\"last_refreshed\", type datetime}, {\"persona\", type text}, {\"geography\", type text}, {\"horizon\", type text}, {\"next_action\", type text}, {\"domain\", type text}, {\"buyer_persona\", type text}, {\"next_action_strategist\", type text}, {\"next_action_sales\", type text}, {\"next_action_presales\", type text}}, \"en-US\"),",
+                "    #\"Display Label\" = Table.AddColumn(Typed, \"Display Label\", each if [run_id] = null then [label] else [label] & \" (\" & Date.ToText(Date.From([run_id]), \"yyyy-MM-dd\") & \")\", type text),",
+                "    #\"Run Date\" = Table.AddColumn(#\"Display Label\", \"Run Date\", each Date.From([run_id]), type date),",
+                "    #\"Horizon Order\" = Table.AddColumn(#\"Run Date\", \"Horizon Order\", each if [horizon] = \"Now\" then 1 else if [horizon] = \"Next\" then 2 else if [horizon] = \"Later\" then 3 else 4, Int64.Type)",
+                "in",
+                "    #\"Horizon Order\""
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Scores",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "45b4ce57-82c9-4dd7-b599-aa562bdbb18c",
+            "sourceColumn": "id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "opportunity_space_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "3b47579e-56f8-4e7c-9038-9169919b3781",
+            "sourceColumn": "opportunity_space_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Market Signal Strength",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "318ee21b-e4ae-40a0-9980-f38cc2de9e4f",
+            "sourceColumn": "market_signal_strength",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Source Diversity",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "5a92d40f-b175-4ee6-a3f9-aa22e6e40f78",
+            "sourceColumn": "source_diversity",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Evidence Quality",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "eb9a3d07-996d-4af8-9898-a732d0d4e631",
+            "sourceColumn": "evidence_quality",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Evidence Quality Justification",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "isHidden": true,
+            "lineageTag": "e4f75f5b-f631-495c-b7a3-04b6f671441b",
+            "sourceColumn": "evidence_quality_justification",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Novelty Momentum",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "2b082957-aca2-43d9-a42b-1502ae0acaff",
+            "sourceColumn": "novelty_momentum",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Strategic Relevance",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "4cd4a9ad-66b9-4dd4-8c84-b89eb0f7f3b2",
+            "sourceColumn": "strategic_relevance",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Strategic Relevance Justification",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "isHidden": true,
+            "lineageTag": "87b37d59-b444-45f2-939d-621343e60cba",
+            "sourceColumn": "strategic_relevance_justification",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Urgency Score",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "d91e79d7-bccc-460f-b84d-8efbd017c354",
+            "sourceColumn": "urgency_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Attractiveness Score",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "9853c0a6-9d59-48b3-ac55-4697ed31a3d0",
+            "sourceColumn": "total_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Scored At",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "c91fd5e4-e958-4f74-a30f-0ed98e050539",
+            "sourceColumn": "computed_at",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "right_to_win_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "429bb13c-334a-4480-a350-1cae496b403e",
+            "sourceColumn": "right_to_win_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Portfolio Distance",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "a18aed63-5c92-49bb-a920-888b35edae92",
+            "sourceColumn": "portfolio_distance",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Right-to-Win Score",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "double",
+            "formatString": "0.0",
+            "isHidden": true,
+            "lineageTag": "ae50f9e9-c900-44a4-a673-f0697f7ab44e",
+            "sourceColumn": "right_to_win_score",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Matched Assets",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "40f5e50d-9937-4fc6-af29-8f4f08c02fee",
+            "sourceColumn": "matched_assets",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Raw Right-to-Win Justification",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "isHidden": true,
+            "lineageTag": "d0676544-ed71-4b29-b0d4-cede1968ab80",
+            "sourceColumn": "justification",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Right-to-Win Scored At",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "6093ac12-9014-42e1-a85b-b757be798d5f",
+            "sourceColumn": "right_to_win_computed_at",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Quadrant",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "Attractiveness x Right-to-win quadrant, same rule as pipeline/config.py quadrant() (threshold 7, >= is high).",
+            "lineageTag": "20db6a3a-92e1-4408-a32d-8a88cf305b89",
+            "sortByColumn": "Quadrant Order",
+            "sourceColumn": "Quadrant",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Quadrant Order",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "ef292a9f-c4ab-4fce-bffd-4533cc4b1933",
+            "sourceColumn": "Quadrant Order",
+            "summarizeBy": "none"
+          }
+        ],
+        "lineageTag": "5c35c543-528a-417c-ab99-943c0ad13e74",
+        "measures": [
+          {
+            "name": "Quadrant Threshold",
+            "description": "Display only: same threshold as STRONG_THRESHOLD in pipeline/config.py, applied in the Scores query.",
+            "displayFolder": "Quadrant",
+            "expression": "7",
+            "formatString": "0",
+            "lineageTag": "5f9f1474-0de2-4153-8561-2d887e182160"
+          },
+          {
+            "name": "Attractiveness Score",
+            "description": "Weighted attractiveness 0-10. Averaged, so totals and vertical levels stay on the 0-10 scale.",
+            "displayFolder": "Scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Attractiveness Score] )",
+            "formatString": "0.0",
+            "lineageTag": "b8c455a2-cbf3-4a69-bffb-580356a6b7f6"
+          },
+          {
+            "name": "Right-to-Win Score",
+            "displayFolder": "Scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Right-to-Win Score] )",
+            "formatString": "0.0",
+            "lineageTag": "b19ef1a0-959d-4435-8ce6-5138d0d34194"
+          },
+          {
+            "name": "Urgency Score",
+            "displayFolder": "Scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Urgency Score] )",
+            "formatString": "0.0",
+            "lineageTag": "01f0b38f-6774-4e20-8710-deaa2362e8a3"
+          },
+          {
+            "name": "Market Signal Strength",
+            "displayFolder": "Scores\\Sub-scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Market Signal Strength] )",
+            "formatString": "0.0",
+            "lineageTag": "a7f9e3e8-5e9b-4880-b7d4-fe0e2ee3b8fd"
+          },
+          {
+            "name": "Source Diversity",
+            "displayFolder": "Scores\\Sub-scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Source Diversity] )",
+            "formatString": "0.0",
+            "lineageTag": "2c6a7270-14ef-4880-8a0e-679f15c9ec5e"
+          },
+          {
+            "name": "Evidence Quality",
+            "displayFolder": "Scores\\Sub-scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Evidence Quality] )",
+            "formatString": "0.0",
+            "lineageTag": "e9584359-66d0-4bf6-b5bb-a4e9357aa3d8"
+          },
+          {
+            "name": "Novelty Momentum",
+            "displayFolder": "Scores\\Sub-scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Novelty Momentum] )",
+            "formatString": "0.0",
+            "lineageTag": "1da84d36-711a-4c9f-821f-6f14fa9b2bca"
+          },
+          {
+            "name": "Strategic Relevance",
+            "displayFolder": "Scores\\Sub-scores",
+            "expression": "AVERAGE ( 'Scores'[Raw Strategic Relevance] )",
+            "formatString": "0.0",
+            "lineageTag": "6afdb027-f92d-4d7e-99e0-4270fe6d43e9"
+          },
+          {
+            "name": "Attractiveness Rank",
+            "displayFolder": "Scores",
+            "expression": [
+              "IF (",
+              "    HASONEVALUE ( 'Opportunity Spaces'[id] ),",
+              "    RANKX ( ALLSELECTED ( 'Opportunity Spaces' ), [Attractiveness Score], , DESC, DENSE )",
+              ")"
+            ],
+            "formatString": "0",
+            "lineageTag": "573b0839-23e2-4098-b5c1-49f856a3f826"
+          },
+          {
+            "name": "# Opportunity Spaces",
+            "displayFolder": "Portfolio",
+            "expression": "COUNTROWS ( 'Scores' )",
+            "formatString": "#,0",
+            "lineageTag": "49ba1c4d-e57e-460c-988a-30c3303356a7"
+          },
+          {
+            "name": "# Quick Wins",
+            "displayFolder": "Quadrant",
+            "expression": "CALCULATE ( [# Opportunity Spaces], KEEPFILTERS ( 'Scores'[Quadrant] = \"Quick Win\" ) )",
+            "formatString": "#,0",
+            "lineageTag": "4b97da2d-d991-4965-bbe2-59089936b703"
+          },
+          {
+            "name": "# Strategic Bets",
+            "displayFolder": "Quadrant",
+            "expression": "CALCULATE ( [# Opportunity Spaces], KEEPFILTERS ( 'Scores'[Quadrant] = \"Strategic Bet\" ) )",
+            "formatString": "#,0",
+            "lineageTag": "b6574242-cfdf-4fc9-934e-1ed2328483b7"
+          },
+          {
+            "name": "# Safe but not Hot",
+            "displayFolder": "Quadrant",
+            "expression": "CALCULATE ( [# Opportunity Spaces], KEEPFILTERS ( 'Scores'[Quadrant] = \"Safe but not Hot\" ) )",
+            "formatString": "#,0",
+            "lineageTag": "a41e27f4-82ed-49a4-9483-b6f4cfb01f0e"
+          },
+          {
+            "name": "# Deprioritize",
+            "displayFolder": "Quadrant",
+            "expression": "CALCULATE ( [# Opportunity Spaces], KEEPFILTERS ( 'Scores'[Quadrant] = \"Deprioritize\" ) )",
+            "formatString": "#,0",
+            "lineageTag": "042cb66b-27eb-49c7-9689-cbbb23ce67af"
+          },
+          {
+            "name": "% Quick Wins",
+            "displayFolder": "Quadrant",
+            "expression": "DIVIDE ( [# Quick Wins], [# Opportunity Spaces] )",
+            "formatString": "0%",
+            "lineageTag": "f6abffe4-191b-4eef-a4f8-29e4d5d294e7"
+          },
+          {
+            "name": "Selected Opportunity",
+            "displayFolder": "Text",
+            "expression": [
+              "IF (",
+              "    HASONEVALUE ( 'Opportunity Spaces'[id] ),",
+              "    SELECTEDVALUE ( 'Opportunity Spaces'[Label] ) & \"  ·  \" & SELECTEDVALUE ( 'Opportunity Spaces'[Vertical] )",
+              "        & \"  ·  \" & SELECTEDVALUE ( 'Opportunity Spaces'[Use Case] ) & \"  ×  \" & SELECTEDVALUE ( 'Opportunity Spaces'[Technology] )",
+              "        & \"  |  Attractiveness \" & FORMAT ( [Attractiveness Score], \"0.0\" )",
+              "        & \"  ·  Right-to-win \" & FORMAT ( [Right-to-Win Score], \"0.0\" )",
+              "        & \"  ·  \" & SELECTEDVALUE ( 'Scores'[Quadrant] ),",
+              "    \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\"",
+              ")"
+            ],
+            "lineageTag": "ab455b72-05c3-4798-8eef-aac07a900ad4"
+          },
+          {
+            "name": "Evidence Quality Justification",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Scores'[Raw Evidence Quality Justification], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "24bebbd8-741f-4789-88e4-54ec02c72e10"
+          },
+          {
+            "name": "Strategic Relevance Justification",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Scores'[Raw Strategic Relevance Justification], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "99a75291-ad32-4bcc-b3b9-1d2bdea0fe0d"
+          },
+          {
+            "name": "Right-to-Win Justification",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Scores'[Raw Right-to-Win Justification], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "38a92e1c-4cb9-4401-b109-e91bad3610ef"
+          },
+          {
+            "name": "Next Action Strategist",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Opportunity Spaces'[Next Action (Strategist)], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "fa7ebb48-e270-4d0b-af85-efa11fe9b207"
+          },
+          {
+            "name": "Next Action Sales",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Opportunity Spaces'[Next Action (Sales)], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "be01ae4e-c59f-42cd-b39d-2ca2ef065a0f"
+          },
+          {
+            "name": "Next Action Presales",
+            "displayFolder": "Text",
+            "expression": "SELECTEDVALUE ( 'Opportunity Spaces'[Next Action (Presales)], \"No opportunity space selected. Go to Decision Matrix, right-click a bubble or a table row, then Drill through > this page.\" )",
+            "lineageTag": "94d4a1f5-8428-44e5-afe3-4d9b59d077d1"
+          },
+          {
+            "name": "Last Scored At",
+            "displayFolder": "Freshness",
+            "expression": "MAX ( 'Scores'[Scored At] )",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "a24a392f-6848-4186-968f-a76827cfee15"
+          },
+          {
+            "name": "Data As Of",
+            "displayFolder": "Freshness",
+            "expression": [
+              "\"Data \" & FORMAT ( MAX ( 'Export Info'[Exported At] ), \"yyyy-mm-dd hh:nn\" ) & \" UTC\"",
+              "    & \" · scored \" & FORMAT ( [Last Scored At], \"yyyy-mm-dd\" )"
+            ],
+            "lineageTag": "b4fc258a-5566-4ceb-98c8-f5e61f739545"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "Scores",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"latest_scores.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"id\", Int64.Type}, {\"opportunity_space_id\", Int64.Type}, {\"market_signal_strength\", type number}, {\"source_diversity\", type number}, {\"evidence_quality\", type number}, {\"evidence_quality_justification\", type text}, {\"novelty_momentum\", type number}, {\"strategic_relevance\", type number}, {\"strategic_relevance_justification\", type text}, {\"urgency_score\", type number}, {\"total_score\", type number}, {\"computed_at\", type datetime}, {\"right_to_win_id\", Int64.Type}, {\"portfolio_distance\", type text}, {\"right_to_win_score\", type number}, {\"matched_assets\", type text}, {\"justification\", type text}, {\"right_to_win_computed_at\", type datetime}}, \"en-US\"),",
+                "    Quadrant = Table.AddColumn(Typed, \"Quadrant\", each let a = [total_score], r = [right_to_win_score], t = 7 in if a = null or r = null then null else if a >= t and r >= t then \"Quick Win\" else if a >= t then \"Strategic Bet\" else if r >= t then \"Safe but not Hot\" else \"Deprioritize\", type text),",
+                "    #\"Quadrant Order\" = Table.AddColumn(Quadrant, \"Quadrant Order\", each if [Quadrant] = \"Quick Win\" then 1 else if [Quadrant] = \"Strategic Bet\" then 2 else if [Quadrant] = \"Safe but not Hot\" then 3 else if [Quadrant] = \"Deprioritize\" then 4 else 5, Int64.Type)",
+                "in",
+                "    #\"Quadrant Order\""
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Signals",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "7a467367-599e-4927-aff2-5e91bf172fd5",
+            "sourceColumn": "id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Source",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "54a0773a-c334-4a26-9006-cedc84f28253",
+            "sourceColumn": "source_name",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Source URL",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataCategory": "WebUrl",
+            "dataType": "string",
+            "lineageTag": "929bec08-7991-46e2-aad9-bc4934d21648",
+            "sourceColumn": "source_url",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Signal Type",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "bab83161-7ffd-47f0-af74-19509d8d0289",
+            "sourceColumn": "signal_type",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Title",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "36bded9f-241e-4211-9437-c43c14480ff6",
+            "sourceColumn": "title",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Summary",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "886f73f3-a302-44d5-8de9-ce465b96ac5e",
+            "sourceColumn": "summary",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Published Date Text",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "Raw publication date text as scraped; use published_on for dates.",
+            "lineageTag": "233a4859-2625-4c68-b213-9481061069eb",
+            "sourceColumn": "published_date",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Collected At",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "fe56bfae-285f-4c5d-929a-bea6eea4d9fe",
+            "sourceColumn": "collected_at",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Vertical Hint",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "lineageTag": "e6840027-b12e-48e0-a500-eb5514da97de",
+            "sourceColumn": "vertical_hint",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Published On",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd",
+            "lineageTag": "75128af7-6e0d-4e22-b85a-9c495f7cd5ca",
+            "sourceColumn": "published_on",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Collected Date",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd",
+            "lineageTag": "3137d6dc-61e1-40ba-9394-059ce1166948",
+            "sourceColumn": "Collected Date",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Signal Age",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "Days between publication and collection: how fresh the evidence was when the radar picked it up.",
+            "lineageTag": "e7a1f7a1-258d-4cea-8c2c-1d231008dd19",
+            "sortByColumn": "Signal Age Order",
+            "sourceColumn": "Signal Age",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Signal Age Order",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "4498b8dc-cde3-40db-bd5b-d925b3c1859f",
+            "sourceColumn": "Signal Age Order",
+            "summarizeBy": "none"
+          }
+        ],
+        "lineageTag": "6bc9e891-bea1-48de-a441-ba885d556103",
+        "measures": [
+          {
+            "name": "Grounding Signal Count",
+            "description": "Signals linked to the opportunity spaces in context.",
+            "displayFolder": "Evidence",
+            "expression": "DISTINCTCOUNT ( 'Opportunity Signals'[signal_id] )",
+            "formatString": "#,0",
+            "lineageTag": "45aac751-0f55-46de-8c9b-f5bbccf0d6b1"
+          },
+          {
+            "name": "# Signals",
+            "displayFolder": "Evidence",
+            "expression": "COUNTROWS ( 'Signals' )",
+            "formatString": "#,0",
+            "lineageTag": "c61f8c47-5580-41c9-95a9-55e3ab816d68"
+          },
+          {
+            "name": "# Sources",
+            "displayFolder": "Evidence",
+            "expression": "DISTINCTCOUNT ( 'Signals'[Source] )",
+            "formatString": "#,0",
+            "lineageTag": "a3e16e73-f259-4799-aa36-bf7d3b469aa6"
+          },
+          {
+            "name": "Latest Signal Collected",
+            "displayFolder": "Evidence",
+            "expression": "MAX ( 'Signals'[Collected At] )",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "83a9f6a1-e211-4ab8-a249-038d0a89d5f6"
+          },
+          {
+            "name": "% Fresh Signals",
+            "description": "Share of signals published at most 30 days before they were collected.",
+            "displayFolder": "Evidence",
+            "expression": "DIVIDE ( CALCULATE ( [# Signals], KEEPFILTERS ( 'Signals'[Signal Age] = \"0-30 days\" ) ), [# Signals] )",
+            "formatString": "0%",
+            "lineageTag": "61d9b71d-4dd6-4b9a-8489-bdde08f9e980"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "Signals",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"signals.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"id\", Int64.Type}, {\"source_name\", type text}, {\"source_url\", type text}, {\"signal_type\", type text}, {\"title\", type text}, {\"summary\", type text}, {\"published_date\", type text}, {\"collected_at\", type datetime}, {\"vertical_hint\", type text}, {\"published_on\", type date}}, \"en-US\"),",
+                "    #\"Collected Date\" = Table.AddColumn(Typed, \"Collected Date\", each Date.From([collected_at]), type date),",
+                "    #\"Signal Age Days\" = Table.AddColumn(#\"Collected Date\", \"Signal Age Days\", each if [published_on] = null or [Collected Date] = null then null else Duration.Days([Collected Date] - [published_on]), Int64.Type),",
+                "    #\"Signal Age\" = Table.AddColumn(#\"Signal Age Days\", \"Signal Age\", each let d = [Signal Age Days] in if d = null then \"Unknown\" else if d <= 30 then \"0-30 days\" else if d <= 90 then \"31-90 days\" else if d <= 365 then \"3-12 months\" else \"Over 1 year\", type text),",
+                "    #\"Signal Age Order\" = Table.AddColumn(#\"Signal Age\", \"Signal Age Order\", each if [Signal Age] = \"0-30 days\" then 1 else if [Signal Age] = \"31-90 days\" then 2 else if [Signal Age] = \"3-12 months\" then 3 else if [Signal Age] = \"Over 1 year\" then 4 else 5, Int64.Type),",
+                "    #\"Removed Age Days\" = Table.RemoveColumns(#\"Signal Age Order\", {\"Signal Age Days\"}),",
+                "    #\"Readable Values\" = Table.TransformColumns(#\"Removed Age Days\", {{\"signal_type\", each if _ = null then null else Text.Proper(Text.Replace(_, \"_\", \" \")), type text}, {\"vertical_hint\", each if _ = null then \"Unassigned\" else _, type text}})",
+                "in",
+                "    #\"Readable Values\""
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Opportunity Signals",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "opportunity_space_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "lineageTag": "040cbec9-8c33-4c28-b4b6-6a39fb47ca55",
+            "sourceColumn": "opportunity_space_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "signal_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "lineageTag": "9f0c31b0-33db-42de-be63-4a4d3e1bd508",
+            "sourceColumn": "signal_id",
+            "summarizeBy": "none"
+          }
+        ],
+        "description": "Bridge: which signals ground which opportunity space.",
+        "isHidden": true,
+        "lineageTag": "57a119c5-e4b4-4356-952a-bebe8cfc3b40",
+        "partitions": [
+          {
+            "name": "Opportunity Signals",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"opportunity_signals.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"opportunity_space_id\", Int64.Type}, {\"signal_id\", Int64.Type}}, \"en-US\")",
+                "in",
+                "    Typed"
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Assets",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "opportunity_space_id",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "int64",
+            "isHidden": true,
+            "lineageTag": "35c5be59-a2b0-4650-ac29-6d667b5034d3",
+            "sourceColumn": "opportunity_space_id",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Asset",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "string",
+            "description": "One Orange Business asset cited in the right-to-win score.",
+            "lineageTag": "7f18790b-8e45-4f5a-aad6-d277db7620cc",
+            "sourceColumn": "asset",
+            "summarizeBy": "none"
+          }
+        ],
+        "description": "matched_assets split to one row per asset.",
+        "lineageTag": "5813ae38-1aa9-42b4-92e7-f23b3028a16f",
+        "partitions": [
+          {
+            "name": "Assets",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"opportunity_assets.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"opportunity_space_id\", Int64.Type}, {\"asset\", type text}}, \"en-US\")",
+                "in",
+                "    Typed"
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Export Info",
+        "annotations": [
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "Exported At",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "User"
+              }
+            ],
+            "dataType": "dateTime",
+            "formatString": "yyyy-mm-dd hh:nn",
+            "lineageTag": "35ce4821-fc4b-4210-8923-9aab71ce2caf",
+            "sourceColumn": "exported_at",
+            "summarizeBy": "none"
+          }
+        ],
+        "isHidden": true,
+        "lineageTag": "52fceffa-0362-4925-893f-92ad20e71f76",
+        "partitions": [
+          {
+            "name": "Export Info",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "    Source = Csv.Document(File.Contents(DataFolder & \"export_info.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
+                "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
+                "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"exported_at\", type datetime}}, \"en-US\")",
+                "in",
+                "    Typed"
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

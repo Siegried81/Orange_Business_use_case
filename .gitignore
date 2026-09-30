@@ -56,3 +56,11 @@ logs/*
 .vscode/
 # Personal interview/presentation prep notes, kept local only
 docs/README_6questions.md
+
+# Power BI: generated CSV export and local PBIP cache
+app/powerbi_data/
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+
+# Local archives (a repo snapshot zip contains .env)
+*.zip

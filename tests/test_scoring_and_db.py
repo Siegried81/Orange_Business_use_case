@@ -552,6 +552,22 @@ class TestSummaryHeader:
         assert "- Market signal strength: 7.86" + chr(10) in text
         assert "- Source diversity: 3.33" + chr(10) in text
 
+    def test_urgency_line_does_not_claim_a_flat_per_signal_bonus(
+        self, db_conn, tmp_path
+    ):
+        """The old text said "+2 per regulation/buying_signal signal", which
+        scoring.py never computed (weighted sum scaled to a percentile)."""
+        import radar_cli
+
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        _insert_score(db_conn, os_id)
+        _insert_right_to_win(db_conn, os_id)
+        out = tmp_path / "summary.md"
+        radar_cli.cmd_summary(db_conn, output_path=str(out))
+        text = out.read_text(encoding="utf-8")
+        assert "+2 per" not in text
+        assert "95th percentile" in text
+
 
 class TestGoogleNewsSourceName:
     """The TED fallback must store TED under the same name as the TED API."""
