@@ -436,7 +436,8 @@ with col_detail:
     m3.metric(
         "Urgency",
         f"{row.urgency_score:.1f}/10" if pd.notna(row.urgency_score) else "—",
-        help="Deterministic: +2 per regulation/buying_signal signal linked to this OS, capped at 10. Answers 'is there a real deadline', separate from attractiveness.",
+        # Describes pipeline/scoring.py::_urgency_weighted; keep in sync.
+        help="Deterministic: each linked regulation signal counts in full, each buying signal (tender) fades with age, plus a novelty term; scaled against the 95th percentile across opportunity spaces, capped at 10. Answers 'is there a real deadline', separate from attractiveness.",
     )
     role_to_action = {
         "Strategist / Innovator": row.next_action_strategist,

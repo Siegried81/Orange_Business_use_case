@@ -1,0 +1,129 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "25a248d58f4943eeb4a9",
+  "position": {
+    "x": 780,
+    "y": 360,
+    "z": 11000,
+    "height": 360,
+    "width": 500,
+    "tabOrder": 11000
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Assets"
+                    }
+                  },
+                  "Property": "Asset"
+                }
+              },
+              "queryRef": "Assets.Asset",
+              "nativeQueryRef": "Asset",
+              "active": true,
+              "displayName": "Orange Business Asset"
+            }
+          ]
+        },
+        "Tooltips": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Right-to-Win Score"
+                }
+              },
+              "queryRef": "Scores.Right-to-Win Score",
+              "nativeQueryRef": "Right-to-Win Score"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Attractiveness Score"
+                }
+              },
+              "queryRef": "Scores.Attractiveness Score",
+              "nativeQueryRef": "Attractiveness Score"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "# Opportunity Spaces"
+                }
+              },
+              "queryRef": "Scores.# Opportunity Spaces",
+              "nativeQueryRef": "# Opportunity Spaces"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Scores"
+                  }
+                },
+                "Property": "# Opportunity Spaces"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Orange Business Assets Cited in Right-to-Win'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

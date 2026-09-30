@@ -1,0 +1,276 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "f79cf624ae6a8587680d",
+  "position": {
+    "x": 0,
+    "y": 510.65868263473055,
+    "z": 1000,
+    "height": 209.82035928143713,
+    "width": 1075.9281437125749,
+    "tabOrder": 1000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Display Label"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Display Label",
+              "nativeQueryRef": "Display Label",
+              "displayName": "Opportunity Space"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Vertical"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Vertical",
+              "nativeQueryRef": "Vertical",
+              "displayName": "Vertical"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Use Case"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Use Case",
+              "nativeQueryRef": "Use Case",
+              "displayName": "Use Case"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Technology"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Technology",
+              "nativeQueryRef": "Technology",
+              "displayName": "Technology"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Attractiveness Score"
+                }
+              },
+              "queryRef": "Scores.Attractiveness Score",
+              "nativeQueryRef": "Attractiveness Score",
+              "displayName": "Attractiveness"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Right-to-Win Score"
+                }
+              },
+              "queryRef": "Scores.Right-to-Win Score",
+              "nativeQueryRef": "Right-to-Win Score",
+              "displayName": "Right-to-Win"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Urgency Score"
+                }
+              },
+              "queryRef": "Scores.Urgency Score",
+              "nativeQueryRef": "Urgency Score",
+              "displayName": "Urgency"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Quadrant"
+                }
+              },
+              "queryRef": "Scores.Quadrant",
+              "nativeQueryRef": "Quadrant"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Portfolio Distance"
+                }
+              },
+              "queryRef": "Scores.Portfolio Distance",
+              "nativeQueryRef": "Portfolio Distance",
+              "displayName": "Portfolio Distance"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Grounding Signal Count"
+                }
+              },
+              "queryRef": "Signals.Grounding Signal Count",
+              "nativeQueryRef": "Grounding Signal Count",
+              "displayName": "Signals"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Scores"
+                  }
+                },
+                "Property": "Attractiveness Score"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "columnHeaders": [
+        {
+          "properties": {}
+        }
+      ],
+      "values": [
+        {
+          "properties": {
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "102.72119374775409D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Opportunity Spaces.Vertical"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "172.56247554089563D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Opportunity Spaces.Technology"
+          }
+        },
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "70.72791541408478D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "Scores.Portfolio Distance"
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Opportunity Spaces Ranked (right-click a row > Drill through)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

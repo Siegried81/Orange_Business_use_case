@@ -1,0 +1,204 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "9cb21d4b658aaf802e0d",
+  "position": {
+    "x": 0,
+    "y": 95,
+    "z": 0,
+    "height": 625,
+    "width": 653.92746113989642,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Published On"
+                }
+              },
+              "queryRef": "Signals.Published On",
+              "nativeQueryRef": "Published On",
+              "displayName": "Published"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Source"
+                }
+              },
+              "queryRef": "Signals.Source",
+              "nativeQueryRef": "Source",
+              "displayName": "Source Name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Signal Type"
+                }
+              },
+              "queryRef": "Signals.Signal Type",
+              "nativeQueryRef": "Signal Type",
+              "displayName": "Signal Type"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Title"
+                }
+              },
+              "queryRef": "Signals.Title",
+              "nativeQueryRef": "Title",
+              "displayName": "Title"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Vertical Hint"
+                }
+              },
+              "queryRef": "Signals.Vertical Hint",
+              "nativeQueryRef": "Vertical Hint",
+              "displayName": "Vertical Hint"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Source URL"
+                }
+              },
+              "queryRef": "Signals.Source URL",
+              "nativeQueryRef": "Source URL",
+              "displayName": "Link"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "# Signals"
+                }
+              },
+              "queryRef": "Signals.# Signals",
+              "nativeQueryRef": "# Signals",
+              "displayName": "#"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Signals"
+                  }
+                },
+                "Property": "Published On"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "columnHeaders": [
+        {
+          "properties": {}
+        }
+      ],
+      "values": [
+        {
+          "properties": {
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "151.62176165803112D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "signals.source_name1"
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Grounding Signals'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

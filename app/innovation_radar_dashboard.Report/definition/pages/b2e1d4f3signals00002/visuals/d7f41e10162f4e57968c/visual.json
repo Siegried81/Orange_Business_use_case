@@ -1,0 +1,116 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "d7f41e10162f4e57968c",
+  "position": {
+    "x": 0,
+    "y": 0,
+    "z": 7000,
+    "height": 350,
+    "width": 860,
+    "tabOrder": 7000
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Collected Date"
+                }
+              },
+              "queryRef": "Signals.Collected Date",
+              "nativeQueryRef": "Collected Date",
+              "active": true,
+              "displayName": "Collected"
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Signal Type"
+                }
+              },
+              "queryRef": "Signals.Signal Type",
+              "nativeQueryRef": "Signal Type",
+              "displayName": "Signal Type"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "# Signals"
+                }
+              },
+              "queryRef": "Signals.# Signals",
+              "nativeQueryRef": "# Signals"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Signals"
+                  }
+                },
+                "Property": "Collected Date"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Signals Collected per Day by Type'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

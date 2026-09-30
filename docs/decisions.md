@@ -100,3 +100,61 @@ revisit it. Append only — never rewrite a past entry.
 - **Removed:** `docs/taxonomy_extensions.json` (unused copy),
   `docs/extend_taxonomy.md` (outdated design note),
   `opportunity_spaces_summary_top_15.md` (stale 27/08 output).
+
+## 2026-09-30 — Power BI reads a CSV export, saved as a PBIP project
+
+- **What:** `scripts/export_powerbi.py` writes `radar.db` to six CSV files in
+  `app/powerbi_data/` (gitignored); the report is now the
+  `app/innovation_radar_dashboard.pbip` project (`.Report/` and
+  `.SemanticModel/` folders). The `.pbix` is kept and committed as a backup.
+- **Why:** Power BI has no SQLite connector, and the old `.pbix` showed stale
+  figures. A PBIP stores measures and visuals as text, so they can be diffed.
+- **Revisit if:** the report has to refresh on another machine: the
+  `DataFolder` parameter in `model.bim` is an absolute local path, and the
+  quadrant threshold 7 is restated there instead of read from
+  `STRONG_THRESHOLD`.
+
+## 2026-09-30 — Right-to-win rescored; both summaries regenerated
+
+- **What:** a scoring run on 30/09 (right_to_win `computed_at` 07:28-11:40
+  UTC; the exact command was not recorded) replaced the right-to-win and LLM
+  sub-scores. `opportunity_spaces_summary.md` is back to the full list
+  (`radar_cli.py summary`) and `opportunity_spaces_summary_top_15.md` is
+  regenerated with `summary --top 15 --output ...`; the top-15 file is kept
+  again, which supersedes its removal in the 29/09 entry.
+- **Changes the numbers:** with the same linked signals for all 133 OS, 38 OS
+  changed portfolio level (15 L1->L3, 15 L3->L1, 4 L0->L1, 2 L1->L0,
+  1 L3->L4, 1 L2->L3); quadrants strong/needs capability/moderate/low =
+  17/6/81/29 -> 16/5/77/35; top OS by attractiveness OS097 -> OS020. The top
+  15 kept the same members.
+- **Why it matters:** right-to-win is not stable across LLM runs at
+  temperature 0. A ranking shown to a client should be read with that margin.
+- **Revisit if:** right-to-win is made reproducible (e.g. several runs and a
+  majority level, or a deterministic rule on matched assets).
+
+## 2026-09-30 — Summary urgency wording
+
+- **What:** the urgency line in `radar_cli.py summary` no longer says "+2 per
+  regulation/buying_signal signal"; it now describes what
+  `scoring._urgency_weighted()` computes (regulation in full, tenders fading
+  with age, a novelty term, scaled to the 95th percentile). Pinned by
+  `test_urgency_line_does_not_claim_a_flat_per_signal_bonus`.
+- **Why:** the old sentence described a formula the code never used. The
+  urgency values themselves do not change.
+  The same wrong sentence was also fixed in `radar_cli_top_15.py` and in the
+  Urgency tooltip of `app/streamlit_app.py`.
+- **Revisit if:** `_urgency_weighted()` changes.
+
+## 2026-09-30 — Power BI export hardened and tested
+
+- **What:** `scripts/export_powerbi.py` opens `radar.db` read-only, declares
+  `published_on` in the header even when no signal is exported, reports how
+  many present dates could not be parsed, and warns (with the value to use)
+  when the model's `DataFolder` is not this repo's `app/powerbi_data/`.
+  Covered by `tests/test_export_powerbi.py`.
+- **Why:** the absolute `DataFolder` cannot be made relative in Power Query,
+  so a fresh clone would refresh from a missing folder with no explanation;
+  unparseable dates were exported as empty without a trace. Exported CSVs are
+  byte-identical to the previous export on the current DB.
+- **Revisit if:** Power BI gains relative paths, or the report moves to a
+  shared data source.

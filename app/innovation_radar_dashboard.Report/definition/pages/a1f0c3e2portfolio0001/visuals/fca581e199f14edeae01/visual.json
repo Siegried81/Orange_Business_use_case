@@ -1,0 +1,144 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "fca581e199f14edeae01",
+  "position": {
+    "x": 0,
+    "y": 110,
+    "z": 2000,
+    "height": 610,
+    "width": 420,
+    "tabOrder": 2000
+  },
+  "visual": {
+    "visualType": "clusteredBarChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Vertical"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Vertical",
+              "nativeQueryRef": "Vertical",
+              "active": true,
+              "displayName": "Vertical"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Display Label"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Display Label",
+              "nativeQueryRef": "Display Label",
+              "active": false
+            }
+          ]
+        },
+        "Tooltips": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "# Opportunity Spaces"
+                }
+              },
+              "queryRef": "Scores.# Opportunity Spaces",
+              "nativeQueryRef": "# Opportunity Spaces"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Attractiveness Score"
+                }
+              },
+              "queryRef": "Scores.Attractiveness Score",
+              "nativeQueryRef": "Attractiveness Score"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Right-to-Win Score"
+                }
+              },
+              "queryRef": "Scores.Right-to-Win Score",
+              "nativeQueryRef": "Right-to-Win Score"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Scores"
+                  }
+                },
+                "Property": "Attractiveness Score"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Attractiveness vs Right-to-Win by Vertical (drill down)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

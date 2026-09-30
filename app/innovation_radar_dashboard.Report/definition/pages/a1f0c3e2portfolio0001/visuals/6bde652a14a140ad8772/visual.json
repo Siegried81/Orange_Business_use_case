@@ -1,0 +1,137 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "6bde652a14a140ad8772",
+  "position": {
+    "x": 860,
+    "y": 420,
+    "z": 6000,
+    "height": 300,
+    "width": 420,
+    "tabOrder": 6000
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Opportunity Spaces"
+                    }
+                  },
+                  "Property": "Display Label"
+                }
+              },
+              "queryRef": "Opportunity Spaces.Display Label",
+              "nativeQueryRef": "Display Label",
+              "displayName": "Opportunity Space"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Urgency Score"
+                }
+              },
+              "queryRef": "Scores.Urgency Score",
+              "nativeQueryRef": "Urgency Score",
+              "displayName": "Urgency"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Attractiveness Score"
+                }
+              },
+              "queryRef": "Scores.Attractiveness Score",
+              "nativeQueryRef": "Attractiveness Score",
+              "displayName": "Attract."
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Right-to-Win Score"
+                }
+              },
+              "queryRef": "Scores.Right-to-Win Score",
+              "nativeQueryRef": "Right-to-Win Score",
+              "displayName": "RTW"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Scores"
+                    }
+                  },
+                  "Property": "Quadrant"
+                }
+              },
+              "queryRef": "Scores.Quadrant",
+              "nativeQueryRef": "Quadrant"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Scores"
+                  }
+                },
+                "Property": "Urgency Score"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Most Urgent Opportunities'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

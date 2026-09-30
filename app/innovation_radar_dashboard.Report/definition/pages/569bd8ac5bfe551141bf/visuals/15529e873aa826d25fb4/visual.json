@@ -1,0 +1,128 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "15529e873aa826d25fb4",
+  "position": {
+    "x": 0,
+    "y": 40,
+    "z": 1,
+    "height": 680,
+    "width": 1000,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "treemap",
+    "query": {
+      "queryState": {
+        "Group": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Vertical Hint"
+                }
+              },
+              "queryRef": "Signals.Vertical Hint",
+              "nativeQueryRef": "Vertical Hint",
+              "active": true,
+              "displayName": "Vertical"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Signal Type"
+                }
+              },
+              "queryRef": "Signals.Signal Type",
+              "nativeQueryRef": "Signal Type",
+              "active": false,
+              "displayName": "Signal Type"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "Source"
+                }
+              },
+              "queryRef": "Signals.Source",
+              "nativeQueryRef": "Source",
+              "active": false,
+              "displayName": "Source"
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Signals"
+                    }
+                  },
+                  "Property": "# Signals"
+                }
+              },
+              "queryRef": "Signals.# Signals",
+              "nativeQueryRef": "# Signals",
+              "displayName": "Signal Volume"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "legend": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Signal Coverage: Vertical > Signal Type > Source (use the drill arrows)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

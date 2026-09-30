@@ -23,17 +23,30 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── scoring.py               # attractiveness + right-to-win scoring, LLM calls
 │   ├── taxonomy_validation.py   # generic-term filtering
 │   ├── extend_taxonomy.py       # watchlist -> proposal workflow
+│   ├── theme_promotion.py       # tracks valid themes across runs, feeds promote
+│   ├── latest_scores.py         # prints the most recent score per opportunity space
+│   ├── signals_discovery.py     # older copy of theme tracking, used by radar_cli_top_15.py
 │   └── db.py                    # SQLite access layer (radar.db)
 ├── llm/
 │   └── llm_client.py            # provider-agnostic LLM client (Groq -> Cerebras -> SambaNova -> Ollama)
 ├── app/
 │   ├── streamlit_app.py         # interactive dashboard
-│   └── innovation_radar_dashboard.pbix  # Power BI report
+│   ├── innovation_radar_dashboard.pbip  # Power BI project (open this one)
+│   ├── innovation_radar_dashboard.Report/        # report pages and visuals (part of the .pbip)
+│   ├── innovation_radar_dashboard.SemanticModel/ # tables, relationships, DAX measures (part of the .pbip)
+│   ├── innovation_radar_dashboard.pbix  # previous Power BI file, kept as backup
+│   └── powerbi_data/            # CSV export of radar.db read by Power BI (generated)
 ├── radar_cli.py                  # CLI entry point (create/promote/link/summary/all/...)
+├── radar_cli_top_15.py           # older CLI, kept on purpose (see docs/decisions.md)
+├── opportunity_spaces_summary.md         # client-facing summary, all opportunity spaces (generated)
+├── opportunity_spaces_summary_top_15.md  # same, top 15 by attractiveness (generated)
+├── screenshots/                  # dashboard screenshots
 ├── tests/
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
+│   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   └── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
 ├── scripts/                      # one-off analysis scripts, run from the repo root
+│   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
 │   └── check_healthcare.py       # vertical diagnostic query
 ├── docs/
@@ -76,10 +89,21 @@ python radar_cli.py review         # approve/reject taxonomy proposals
 python -m pytest                   # run the tests (no network needed)
 ```
 
+Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
+
+```bash
+python scripts/export_powerbi.py   # radar.db -> app/powerbi_data/*.csv
+```
+
+Then open `app/innovation_radar_dashboard.pbip` and click Refresh. The CSV folder is the
+`DataFolder` parameter (Transform data > Manage parameters). It holds an absolute path,
+so set it on a fresh clone or if the repo moves; the export script prints a warning with
+the value to use when it does not match.
+
 ## Key challenges
 
-- **LLM reliability**: the Ollama fallback (used when Groq hits quota) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
-- **Calibration on a moving dataset**: thresholds (urgency scaling, duplicate detection) are re-derived from percentile statistics on the live opportunity-space population rather than hardcoded, since the dataset kept growing (39 → 100+ spaces) as sources came online.
+- **LLM reliability**: the local Ollama fallback (used when Groq, Cerebras and SambaNova all fail) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
+- **Calibration on a moving dataset**: the urgency scale is re-derived on every run from the 95th percentile of the live opportunity-space population rather than hardcoded, since the dataset kept growing (133 spaces today) as sources came online. `radar_cli.py calibrate` prints signal-count percentiles to help choose how many signals `link` keeps per space. Near-duplicate signal detection still uses a fixed 0.85 similarity.
 - **Data correctness under concurrency**: SQLite timestamp collisions (two scores inserted milliseconds apart on the same machine) could silently pick the wrong "latest" score; the latest-score queries in `pipeline/db.py` use a deterministic tiebreaker (`id DESC`), and `insert_score()` updates each opportunity space's row in place, so there is one current score per space rather than a history.
 
 ## Tech stack

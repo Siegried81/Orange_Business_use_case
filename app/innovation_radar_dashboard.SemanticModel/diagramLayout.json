@@ -1,0 +1,100 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 1049.6045940215754,
+            "y": 498.83075053456207
+          },
+          "nodeIndex": "Export Info",
+          "nodeLineageTag": "52fceffa-0362-4925-893f-92ad20e71f76",
+          "size": {
+            "height": 104,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 50,
+            "y": -50
+          },
+          "nodeIndex": "Scores",
+          "nodeLineageTag": "5c35c543-528a-417c-ab99-943c0ad13e74",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 815.60459402157539,
+            "y": 675.26253664133355
+          },
+          "nodeIndex": "Assets",
+          "nodeLineageTag": "5813ae38-1aa9-42b4-92e7-f23b3028a16f",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 240.56645442223564,
+            "y": 656.82913793620583
+          },
+          "nodeIndex": "Opportunity Signals",
+          "nodeLineageTag": "57a119c5-e4b4-4356-952a-bebe8cfc3b40",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 525.70810211032585,
+            "y": 751.66150106912414
+          },
+          "nodeIndex": "Opportunity Spaces",
+          "nodeLineageTag": "0c4223ca-3d73-463a-979d-8cc0f63d3fe6",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 66.382689432342,
+            "y": 304.12861457474435
+          },
+          "nodeIndex": "Signals",
+          "nodeLineageTag": "6bc9e891-bea1-48de-a441-ba885d556103",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "Toutes les tables",
+      "zoomValue": 100,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Toutes les tables",
+  "defaultDiagram": "Toutes les tables"
+}

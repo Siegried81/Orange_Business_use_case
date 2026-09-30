@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "f51636bd572feda36285",
+  "displayName": "Score Breakdown",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280
+}
