@@ -520,7 +520,9 @@ def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
         )
         lines.append("")
         lines.append(
-            f"**Urgency: {r['urgency_score']}/10** — deterministic, +2 per regulation/buying_signal signal linked to this OS (is there a real deadline, separate from attractiveness)."
+            # Describes pipeline/scoring.py::_urgency_weighted and
+            # compute_urgency_scaling_point; keep the two in sync.
+            f"**Urgency: {r['urgency_score']}/10** — deterministic: each linked regulation signal counts in full, each buying signal (tender) fades with age, plus a novelty term; scaled against the 95th percentile across opportunity spaces (is there a real deadline, separate from attractiveness)."
         )
         lines.append("")
         lines.append(
