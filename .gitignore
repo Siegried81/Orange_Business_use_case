@@ -49,7 +49,6 @@ dmypy.json
 
 .streamlit/secrets.toml
 
-radar.db
 radar.db-journal
 # opportunity_spaces_summary.md
 logs/*
