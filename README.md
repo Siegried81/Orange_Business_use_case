@@ -41,10 +41,12 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 ├── opportunity_spaces_summary.md         # client-facing summary, all opportunity spaces (generated)
 ├── opportunity_spaces_summary_top_15.md  # same, top 15 by attractiveness (generated)
 ├── screenshots/                  # dashboard screenshots
+├── conftest.py                   # repo root on sys.path + autouse fixture blocking all sockets
 ├── tests/
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
-│   └── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
+│   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
+│   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
@@ -52,7 +54,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 ├── docs/
 │   ├── decisions.md              # dated decision log
 │   └── technical_deep_dive.md    # score formulas, modules, bugs fixed, open issues
-├── radar.db                      # SQLite database (generated, not tracked)
+├── radar.db                      # SQLite database (6.8 MB, tracked on purpose: Streamlit Cloud deploys from the repo and cannot run the pipeline)
 ├── .env.example                   # required environment variables (no real keys)
 ├── requirements.txt
 └── README.md
@@ -83,10 +85,12 @@ python radar_cli.py create         # register seed opportunity spaces
 python radar_cli.py promote        # register recurring themes
 python radar_cli.py link           # attach signals to each opportunity space
 python -m pipeline.scoring         # score (LLM); --refresh recomputes the deterministic sub-scores only
+                                   # exits non-zero if no LLM provider answered: the previous real scores are kept, not overwritten
+python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitting on a neutral fallback
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the tests (no network needed)
+python -m pytest                   # run the 128 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):

@@ -16,6 +16,8 @@ from pipeline.db import (
     get_unscored_opportunity_spaces,
     get_opportunity_spaces_missing_right_to_win,
     add_to_watchlist,
+    insert_score,
+    insert_right_to_win_score,
     insert_signal,
     link_signal_to_opportunity,
     get_linked_signals_for_opportunity_space,
@@ -635,3 +637,200 @@ class TestLinkNonTechSources:
             for s in get_linked_signals_for_opportunity_space(db_conn, os_id)
         ]
         assert sources == ["Tech Monitor"]
+
+
+class TestFallbackNeverOverwritesARealScore:
+    """When no LLM provider answers, scoring hands the database a neutral 5.0 /
+    L4-0 whose justification says "unavailable". A `--force` rescore used to
+    write that straight over a real score and still exit 0, so a quota outage
+    silently flattened the whole radar. insert_score() and
+    insert_right_to_win_score() now refuse that write and return False.
+    """
+
+    REAL = "Nine named sources, two of them tenders."
+    FALLBACK = "LLM scoring unavailable -- neutral default used."
+
+    def _sub_scores(self, value):
+        return {
+            "market_signal_strength": value,
+            "source_diversity": value,
+            "evidence_quality": value,
+            "novelty_momentum": value,
+            "strategic_relevance": value,
+        }
+
+    def _stored(self, conn, os_id):
+        return conn.execute(
+            "SELECT total_score, evidence_quality_justification FROM scores WHERE opportunity_space_id = ?",
+            (os_id,),
+        ).fetchone()
+
+    def test_fallback_on_an_empty_row_is_written(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        assert (
+            insert_score(
+                db_conn,
+                os_id,
+                self._sub_scores(5.0),
+                5.0,
+                evidence_quality_justification=self.FALLBACK,
+                strategic_relevance_justification=self.FALLBACK,
+            )
+            is True
+        )
+        assert self._stored(db_conn, os_id)["total_score"] == 5.0
+
+    def test_fallback_does_not_overwrite_a_real_score(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(8.0),
+            8.4,
+            evidence_quality_justification=self.REAL,
+            strategic_relevance_justification=self.REAL,
+        )
+        assert (
+            insert_score(
+                db_conn,
+                os_id,
+                self._sub_scores(5.0),
+                5.0,
+                evidence_quality_justification=self.FALLBACK,
+                strategic_relevance_justification=self.FALLBACK,
+            )
+            is False
+        )
+        row = self._stored(db_conn, os_id)
+        assert row["total_score"] == 8.4
+        assert row["evidence_quality_justification"] == self.REAL
+
+    def test_one_fallback_half_is_enough_to_refuse_the_row(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(8.0),
+            8.4,
+            evidence_quality_justification=self.REAL,
+            strategic_relevance_justification=self.REAL,
+        )
+        written = insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(6.0),
+            6.0,
+            evidence_quality_justification=self.REAL,
+            strategic_relevance_justification=self.FALLBACK,
+        )
+        assert written is False
+        assert self._stored(db_conn, os_id)["total_score"] == 8.4
+
+    def test_fallback_may_replace_another_fallback(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(5.0),
+            5.0,
+            evidence_quality_justification=self.FALLBACK,
+            strategic_relevance_justification=self.FALLBACK,
+        )
+        written = insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(5.0),
+            5.2,
+            evidence_quality_justification=self.FALLBACK,
+            strategic_relevance_justification=self.FALLBACK,
+        )
+        assert written is True
+        assert self._stored(db_conn, os_id)["total_score"] == 5.2
+
+    def test_a_real_score_always_replaces_a_fallback(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(5.0),
+            5.0,
+            evidence_quality_justification=self.FALLBACK,
+            strategic_relevance_justification=self.FALLBACK,
+        )
+        written = insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(8.0),
+            8.4,
+            evidence_quality_justification=self.REAL,
+            strategic_relevance_justification=self.REAL,
+        )
+        assert written is True
+        assert self._stored(db_conn, os_id)["total_score"] == 8.4
+
+    def test_right_to_win_fallback_does_not_overwrite_a_real_level(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_right_to_win_score(
+            db_conn, os_id, "L0", 9.2, "Flexible SD-WAN", "Direct offer today."
+        )
+        written = insert_right_to_win_score(
+            db_conn,
+            os_id,
+            "L4",
+            0.0,
+            "",
+            "LLM scoring unavailable -- defaulted to L4/0 (do not trust, re-run scoring).",
+        )
+        assert written is False
+        row = db_conn.execute(
+            "SELECT portfolio_distance, right_to_win_score FROM right_to_win_scores WHERE opportunity_space_id = ?",
+            (os_id,),
+        ).fetchone()
+        assert row["portfolio_distance"] == "L0"
+        assert row["right_to_win_score"] == 9.2
+
+    def test_right_to_win_fallback_on_an_empty_row_is_written(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        written = insert_right_to_win_score(
+            db_conn, os_id, "L4", 0.0, "", "LLM scoring unavailable -- re-run."
+        )
+        assert written is True
+
+    def test_right_to_win_real_score_rescues_a_fallback(self, db_conn):
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_right_to_win_score(
+            db_conn, os_id, "L4", 0.0, "", "LLM scoring unavailable -- re-run."
+        )
+        written = insert_right_to_win_score(
+            db_conn, os_id, "L1", 7.5, "Flexible SD-WAN", "Two assets, not bundled."
+        )
+        assert written is True
+        assert (
+            db_conn.execute(
+                "SELECT portfolio_distance FROM right_to_win_scores WHERE opportunity_space_id = ?",
+                (os_id,),
+            ).fetchone()["portfolio_distance"]
+            == "L1"
+        )
+
+    def test_score_opportunity_space_reports_the_refusal(self, db_conn, monkeypatch):
+        """score_opportunity_space() must tell its caller the write was dropped
+        -- that flag is what makes a dead-LLM run exit non-zero."""
+        from pipeline import scoring
+
+        os_id = _insert_opportunity_space(db_conn, "OS001")
+        insert_score(
+            db_conn,
+            os_id,
+            self._sub_scores(8.0),
+            8.4,
+            evidence_quality_justification=self.REAL,
+            strategic_relevance_justification=self.REAL,
+        )
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: None)
+        row = db_conn.execute(
+            "SELECT * FROM opportunity_spaces WHERE id = ?", (os_id,)
+        ).fetchone()
+        _, total, _, written = scoring.score_opportunity_space(db_conn, row)
+        assert written is False
+        assert self._stored(db_conn, os_id)["total_score"] == 8.4

@@ -385,6 +385,19 @@ def link_signal_to_opportunity(conn, opportunity_space_id, signal_id):
     conn.commit()
 
 
+# Substring carried by every degraded justification scoring.py writes (it
+# imports this name, so there is one definition). Both insert functions below
+# use it to refuse a write that would bury a real score, and
+# get_opportunity_spaces_with_fallback_scores() repeats it as a SQL LIKE
+# pattern to find the rows worth rescuing -- keep the two in step.
+FALLBACK_MARKER = "unavailable"
+
+
+def _is_fallback(justification) -> bool:
+    """True if a justification marks its score as a neutral placeholder."""
+    return bool(justification) and FALLBACK_MARKER in str(justification).lower()
+
+
 def insert_score(
     conn,
     opportunity_space_id,
@@ -393,12 +406,31 @@ def insert_score(
     evidence_quality_justification=None,
     strategic_relevance_justification=None,
     urgency_score=None,
-):
-    existing_os = conn.execute(
-        "SELECT COUNT(*) FROM scores WHERE opportunity_space_id = ?",
+) -> bool:
+    """Write (or update) the attractiveness score of one opportunity space.
+
+    Returns True if the row was written, False if the write was refused because
+    it would have replaced a real score with a fallback. That refusal matters:
+    when no LLM provider answers, the callers hand us a neutral 5.0 with an
+    "unavailable" justification, and a `--force` rescore used to silently
+    overwrite a good score with it. A fallback may only land on an empty row or
+    on another fallback; the whole row is kept or dropped together, since the
+    deterministic sub-scores alone cannot be mixed with a stale LLM half.
+    """
+    existing = conn.execute(
+        "SELECT evidence_quality_justification, strategic_relevance_justification\n           FROM scores WHERE opportunity_space_id = ?",
         (opportunity_space_id,),
-    ).fetchone()[0]
+    ).fetchone()
+    existing_os = 1 if existing else 0
     if existing_os > 0:
+        incoming_is_fallback = _is_fallback(
+            evidence_quality_justification
+        ) or _is_fallback(strategic_relevance_justification)
+        stored_is_fallback = _is_fallback(
+            existing["evidence_quality_justification"]
+        ) or _is_fallback(existing["strategic_relevance_justification"])
+        if incoming_is_fallback and (not stored_is_fallback):
+            return False
         conn.execute(
             "\n            UPDATE scores\n            SET\n                market_signal_strength = ?,\n                source_diversity = ?,\n                evidence_quality = ?,\n                evidence_quality_justification = ?,\n                novelty_momentum = ?,\n                strategic_relevance = ?,\n                strategic_relevance_justification = ?,\n                urgency_score = ?,\n                total_score = ?,\n                computed_at = ?\n            WHERE opportunity_space_id = ?\n            ",
             (
@@ -433,6 +465,7 @@ def insert_score(
             ),
         )
     conn.commit()
+    return True
 
 
 def insert_right_to_win_score(
@@ -442,12 +475,24 @@ def insert_right_to_win_score(
     right_to_win_score: float,
     matched_assets,
     justification,
-):
-    existing_rtw = conn.execute(
-        "SELECT COUNT(*) FROM right_to_win_scores WHERE opportunity_space_id = ?",
+) -> bool:
+    """Write (or update) the right-to-win score of one opportunity space.
+
+    Returns True if the row was written, False if the write was refused for the
+    same reason as insert_score(): when no provider answers, the caller hands us
+    L4 / 0.0 with an "unavailable" justification, and overwriting a real
+    classification with that is worse than keeping yesterday's number.
+    """
+    existing_rtw_row = conn.execute(
+        "SELECT justification FROM right_to_win_scores WHERE opportunity_space_id = ?",
         (opportunity_space_id,),
-    ).fetchone()[0]
+    ).fetchone()
+    existing_rtw = 1 if existing_rtw_row else 0
     if existing_rtw > 0:
+        if _is_fallback(justification) and (
+            not _is_fallback(existing_rtw_row["justification"])
+        ):
+            return False
         conn.execute(
             "\n            UPDATE right_to_win_scores\n            SET\n                portfolio_distance = ?,\n                right_to_win_score = ?,\n                matched_assets = ?,\n                justification = ?,\n                computed_at = ?\n            WHERE opportunity_space_id = ?\n            ",
             (
@@ -472,6 +517,7 @@ def insert_right_to_win_score(
             ),
         )
     conn.commit()
+    return True
 
 
 def delete_opportunity_spaces(conn, labels):
