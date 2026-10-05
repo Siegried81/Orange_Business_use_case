@@ -385,8 +385,6 @@ CUSTOMER_REFERENCES = [
         "source": "https://www.orange-business.com/en/about-us/customer-stories/tmf-group-reduces-risk-enhances-services-hybrid-cloud",
     },
 ]
-OPPORTUNITY_COUNT_BY_VERTICAL = {}
-PIPELINE_VALUE_BY_VERTICAL = {}
 CAPABILITY_STATS = [
     {
         "stat": "30,000 employees",
