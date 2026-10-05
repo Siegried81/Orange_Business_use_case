@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pipeline.analyze import _classify_themes
 from pipeline.taxonomy_validation import is_generic_taxonomy_term
@@ -298,3 +300,191 @@ class TestGroqKeyRotation:
         )
         assert client._call_groq("ping") == "OK"
         assert tried == ["k1", "k2", "k3", "k4", "k5"]
+
+
+class TestNonNumericLlmScore:
+    """A hallucinated score must degrade one opportunity space, not the run.
+
+    float("high") used to raise straight out of llm_evidence_quality /
+    llm_strategic_relevance / llm_right_to_win, aborting the loop and losing
+    every space still queued behind it.
+    """
+
+    def test_coerce_accepts_numbers_and_numeric_strings(self):
+        assert scoring._coerce_llm_score(7.3) == (7.3, "")
+        assert scoring._coerce_llm_score("6.7") == (6.7, "")
+        assert scoring._coerce_llm_score(8) == (8.0, "")
+
+    def test_coerce_marks_a_word_as_a_fallback(self):
+        score, note = scoring._coerce_llm_score("high")
+        assert score == scoring.NEUTRAL_SCORE
+        assert scoring.FALLBACK_MARKER in note
+
+    def test_coerce_marks_none_as_a_fallback(self):
+        score, note = scoring._coerce_llm_score(None)
+        assert score == scoring.NEUTRAL_SCORE
+        assert scoring.FALLBACK_MARKER in note
+
+    def test_evidence_quality_survives_a_word_score(self, monkeypatch):
+        monkeypatch.setattr(
+            scoring,
+            "get_llm_json",
+            lambda *a, **k: {"score": "high", "justification": "lots of signals"},
+        )
+        score, justification = scoring.llm_evidence_quality(FAKE_SIGNALS)
+        assert score == scoring.NEUTRAL_SCORE
+        assert "lots of signals" in justification
+        assert scoring.FALLBACK_MARKER in justification
+
+    def test_strategic_relevance_survives_a_word_score(self, monkeypatch):
+        monkeypatch.setattr(
+            scoring,
+            "get_llm_json",
+            lambda *a, **k: {"score": "very relevant", "justification": "fits"},
+        )
+        score, justification = scoring.llm_strategic_relevance(
+            "Manufacturing", "Energy Optimization", "IoT Platforms", FAKE_SIGNALS
+        )
+        assert score == scoring.NEUTRAL_SCORE
+        assert scoring.FALLBACK_MARKER in justification
+
+    def test_right_to_win_survives_a_word_score(self, monkeypatch):
+        monkeypatch.setattr(
+            scoring,
+            "get_llm_json",
+            lambda *a, **k: {
+                "portfolio_distance": "L1",
+                "right_to_win_score": "strong",
+                "matched_assets": [],
+                "justification": "two assets exist",
+            },
+        )
+        distance, score, assets, justification = scoring.llm_right_to_win(
+            "Manufacturing", "Energy Optimization", "IoT Platforms"
+        )
+        assert distance == "L1"
+        # The neutral score still gets the deterministic CRM bonus on top.
+        expected = scoring.NEUTRAL_SCORE + scoring.crm_customer_overlap_bonus(
+            "Manufacturing"
+        )
+        assert score == expected
+        assert scoring.FALLBACK_MARKER in justification
+
+
+class TestPortfolioDistanceValidation:
+    """portfolio_distance drives the Presales filter, so only L0-L4 may be
+    stored; anything else falls back to L4 and says so."""
+
+    def _result(self, distance):
+        return {
+            "portfolio_distance": distance,
+            "right_to_win_score": 7.0,
+            "matched_assets": ["Flexible SD-WAN"],
+            "justification": "ok",
+        }
+
+    def test_every_declared_level_passes_through(self, monkeypatch):
+        for level in scoring.PORTFOLIO_DISTANCE_LEVELS:
+            monkeypatch.setattr(
+                scoring, "get_llm_json", lambda *a, **k: self._result(level)
+            )
+            distance, _, _, justification = scoring.llm_right_to_win(
+                "Manufacturing", "Energy Optimization", "IoT Platforms"
+            )
+            assert distance == level
+            assert scoring.FALLBACK_MARKER not in justification
+
+    def test_invented_level_falls_back_to_l4(self, monkeypatch):
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: self._result("L7"))
+        distance, _, _, justification = scoring.llm_right_to_win(
+            "Manufacturing", "Energy Optimization", "IoT Platforms"
+        )
+        assert distance == "L4"
+        assert "L7" in justification
+        assert scoring.FALLBACK_MARKER in justification
+
+    def test_prose_level_falls_back_to_l4(self, monkeypatch):
+        monkeypatch.setattr(
+            scoring, "get_llm_json", lambda *a, **k: self._result("Direct offer")
+        )
+        distance, _, _, justification = scoring.llm_right_to_win(
+            "Manufacturing", "Energy Optimization", "IoT Platforms"
+        )
+        assert distance == "L4"
+        assert scoring.FALLBACK_MARKER in justification
+
+    def test_lowercase_level_is_not_silently_accepted(self, monkeypatch):
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: self._result("l0"))
+        distance, _, _, _ = scoring.llm_right_to_win(
+            "Manufacturing", "Energy Optimization", "IoT Platforms"
+        )
+        assert distance == "L4"
+
+
+class TestRightToWinJustificationClaimsOnlyRealBonuses:
+    """The pipeline/opportunity-count bonus read two empty config dicts, so it
+    was always 0 while the justification still advertised it. The function and
+    its mention are gone; only the CRM customer-overlap bonus is real."""
+
+    def test_no_pipeline_bonus_function_left(self):
+        assert not hasattr(scoring, "pipeline_calibration_bonus")
+
+    def test_justification_never_mentions_pipeline_value(self, monkeypatch):
+        monkeypatch.setattr(
+            scoring,
+            "get_llm_json",
+            lambda *a, **k: {
+                "portfolio_distance": "L0",
+                "right_to_win_score": 9.0,
+                "matched_assets": [],
+                "justification": "direct offer",
+            },
+        )
+        _, _, _, justification = scoring.llm_right_to_win(
+            "Healthcare", "Energy Optimization", "IoT Platforms"
+        )
+        assert "pipeline value" not in justification
+        assert "opportunity count" not in justification
+
+    def test_crm_bonus_is_still_applied_and_named(self, monkeypatch):
+        from pipeline.config import CUSTOMER_REFERENCES
+
+        vertical_with_reference = next(
+            c["vertical"] for c in CUSTOMER_REFERENCES if c.get("vertical")
+        )
+        monkeypatch.setattr(
+            scoring,
+            "get_llm_json",
+            lambda *a, **k: {
+                "portfolio_distance": "L0",
+                "right_to_win_score": 7.0,
+                "matched_assets": [],
+                "justification": "direct offer",
+            },
+        )
+        _, score, _, justification = scoring.llm_right_to_win(
+            vertical_with_reference, "Energy Optimization", "IoT Platforms"
+        )
+        assert score > 7.0
+        assert "CRM customer overlap" in justification
+
+
+class TestNetworkIsBlockedInTests:
+    """conftest.py blocks outbound sockets for the whole suite, so a test that
+    forgets to mock its HTTP/feed/LLM call fails loudly instead of reaching the
+    real internet."""
+
+    def test_opening_a_connection_raises(self):
+        import socket
+
+        with pytest.raises(Exception) as excinfo:
+            socket.create_connection(("example.com", 80), timeout=1)
+        assert "mock" in str(excinfo.value).lower()
+
+    def test_socket_connect_raises(self):
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        with pytest.raises(Exception) as excinfo:
+            sock.connect(("example.com", 80))
+        assert "mock" in str(excinfo.value).lower()
