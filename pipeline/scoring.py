@@ -2,6 +2,7 @@ import sys
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from pipeline.db import (
+    FALLBACK_MARKER,
     get_connection,
     get_linked_signals_for_opportunity_space,
     get_all_opportunity_spaces,
@@ -26,8 +27,6 @@ from pipeline.config import (
     DOMAINS_TAXONOMY,
     TRUST_CRITICAL_VERTICALS,
     map_to_value_proposition,
-    OPPORTUNITY_COUNT_BY_VERTICAL,
-    PIPELINE_VALUE_BY_VERTICAL,
     TED_LOOKBACK_DAYS,
 )
 from llm.llm_client import get_llm_json
@@ -43,6 +42,37 @@ MARKET_SIGNAL_CAP = 56
 SOURCE_DIVERSITY_CAP = 40
 EVIDENCE_QUALITY_MAX_SIGNALS = 15
 ENRICHMENT_SAMPLE_SIZE = 10
+
+# FALLBACK_MARKER (imported from db) is the substring every degraded ("no
+# provider answered", "the model returned junk") justification below must
+# contain. It is the only marker the rest of the system has to tell a real
+# score from a neutral placeholder: insert_score() /
+# insert_right_to_win_score() refuse to let a row carrying it overwrite a real
+# score, and get_opportunity_spaces_with_fallback_scores() finds those rows to
+# rescue them.
+# The only portfolio-distance levels the right-to-win prompt may answer with.
+PORTFOLIO_DISTANCE_LEVELS = ("L0", "L1", "L2", "L3", "L4")
+NEUTRAL_SCORE = 5.0
+
+
+def _coerce_llm_score(raw, neutral=NEUTRAL_SCORE, field="score"):
+    """Turn an LLM-returned score into a float, or fall back to a neutral one.
+
+    The model sometimes answers a word ("high") or null where the schema asks
+    for a number. float() then raised and killed the whole scoring run, losing
+    every opportunity space still in the queue, so a bad value now degrades one
+    space instead. Returns (score, note): note is empty on success and carries
+    FALLBACK_MARKER otherwise, so the justification states the score is not real
+    and `--rescue-fallback` picks the row up later.
+    """
+    try:
+        return (float(raw), "")
+    except (TypeError, ValueError):
+        return (
+            float(neutral),
+            f" [{field} {raw!r} is not a number -- score {FALLBACK_MARKER}, "
+            f"neutral {neutral} used, re-run scoring]",
+        )
 
 
 def market_signal_strength(signals) -> float:
@@ -211,7 +241,8 @@ def llm_evidence_quality(signals) -> tuple:
     result = get_llm_json(prompt, system_prompt=EVIDENCE_QUALITY_SYSTEM_PROMPT)
     if not result or "score" not in result:
         return (5.0, "LLM scoring unavailable -- neutral default used.")
-    return (float(result["score"]), result.get("justification", ""))
+    score, note = _coerce_llm_score(result["score"], field="evidence_quality score")
+    return (score, result.get("justification", "") + note)
 
 
 def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
@@ -224,8 +255,8 @@ def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
     result = get_llm_json(prompt, system_prompt=system_prompt)
     if not result or "score" not in result:
         return (5.0, "LLM scoring unavailable -- neutral default used.")
-    score = float(result["score"])
-    justification = result.get("justification", "")
+    score, note = _coerce_llm_score(result["score"], field="strategic_relevance score")
+    justification = result.get("justification", "") + note
     value_prop = map_to_value_proposition(f"{vertical} {use_case} {technology}")
     if value_prop:
         justification += f" Maps to Orange's '{value_prop.value}' value proposition."
@@ -238,20 +269,6 @@ def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
 def crm_customer_overlap_bonus(vertical) -> float:
     count = sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
     return min(1.0, count * 0.5)
-
-
-def pipeline_calibration_bonus(vertical) -> float:
-    bonus = 0.0
-    if OPPORTUNITY_COUNT_BY_VERTICAL.get(vertical):
-        bonus += 0.3
-    values = [v for v in PIPELINE_VALUE_BY_VERTICAL.values() if v]
-    median_value = sorted(values)[len(values) // 2] if values else None
-    if (
-        median_value is not None
-        and PIPELINE_VALUE_BY_VERTICAL.get(vertical, 0) >= median_value
-    ):
-        bonus += 0.3
-    return bonus
 
 
 def llm_right_to_win(vertical, use_case, technology):
@@ -271,15 +288,25 @@ def llm_right_to_win(vertical, use_case, technology):
             "LLM scoring unavailable -- defaulted to L4/0 (do not trust, re-run scoring).",
         )
     distance = result.get("portfolio_distance", "L4")
-    score = float(result.get("right_to_win_score", 0))
+    score, note = _coerce_llm_score(
+        result.get("right_to_win_score", 0), field="right_to_win_score"
+    )
+    justification = result.get("justification", "") + note
+    # The level drives the Presales filter and the quadrant message, so an
+    # invented level ("L5", "Direct offer") must not reach the database. L4 is
+    # the conservative end of the scale: it claims no portfolio fit.
+    if distance not in PORTFOLIO_DISTANCE_LEVELS:
+        justification += (
+            f" [portfolio_distance {distance!r} is not one of "
+            f"{'/'.join(PORTFOLIO_DISTANCE_LEVELS)} -- classification "
+            f"{FALLBACK_MARKER}, defaulted to L4, re-run scoring]"
+        )
+        distance = "L4"
     assets = ", ".join(result.get("matched_assets", []))
-    justification = result.get("justification", "")
     crm_bonus = crm_customer_overlap_bonus(vertical)
-    pipeline_bonus = pipeline_calibration_bonus(vertical)
-    total_bonus = crm_bonus + pipeline_bonus
-    if total_bonus:
-        score = min(10.0, score + total_bonus)
-        justification += f" +{total_bonus:.1f} calibration bonus (CRM customer overlap{(', opportunity count/pipeline value' if pipeline_bonus else '')})."
+    if crm_bonus:
+        score = min(10.0, score + crm_bonus)
+        justification += f" +{crm_bonus:.1f} calibration bonus (CRM customer overlap)."
     return (distance, score, assets, justification)
 
 
@@ -331,6 +358,13 @@ def llm_enrich(vertical, use_case, technology, signals):
 def score_opportunity_space(
     conn, opportunity_space_row, urgency_scaling_point=URGENCY_CAP
 ):
+    """Score one opportunity space and store the result.
+
+    Returns (sub_scores, total, urgency, written). `written` is False when
+    insert_score() refused the row because every LLM provider failed and the
+    neutral fallback would have overwritten a real score -- the caller must
+    report that and fail the run rather than treat it as a successful rescore.
+    """
     signals = get_linked_signals_for_opportunity_space(
         conn, opportunity_space_row["id"]
     )
@@ -350,7 +384,7 @@ def score_opportunity_space(
     }
     urgency = urgency_score(signals, scaling_point=urgency_scaling_point)
     total = sum((sub_scores[k] * WEIGHTS[k] for k in WEIGHTS))
-    insert_score(
+    written = insert_score(
         conn,
         opportunity_space_row["id"],
         sub_scores,
@@ -359,7 +393,7 @@ def score_opportunity_space(
         strategic_relevance_justification=relevance_justification,
         urgency_score=urgency,
     )
-    return (sub_scores, round(total, 2), urgency)
+    return (sub_scores, round(total, 2), urgency, written)
 
 
 def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
@@ -396,7 +430,7 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
             "Nothing to score -- every opportunity space already has a score. Use --force to rescore everything anyway."
         )
         conn.close()
-        return
+        return []
     print(
         f"Scoring {len(spaces)} opportunity space(s){(' (forced rescore of everything)' if force else ' (unscored only)')}\n"
     )
@@ -408,25 +442,41 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
     print(
         f"Urgency scaling point this run (95th percentile of weighted urgent signals): {urgency_scaling_point:.2f} -- an OS at or above this weighted value scores 10/10 on urgency.\n"
     )
+    # Rows the database refused because a fallback would have overwritten a
+    # real score. They are the reason this function can exit non-zero: a run
+    # where no provider answered must not look like a successful rescore.
+    refused = []
     for space in spaces:
-        sub_scores, total, urgency = score_opportunity_space(
+        sub_scores, total, urgency, written = score_opportunity_space(
             conn, space, urgency_scaling_point=urgency_scaling_point
         )
         distance, rtw_score, assets, rtw_justification = llm_right_to_win(
             space["vertical"], space["use_case"], space["technology"]
         )
-        insert_right_to_win_score(
+        rtw_written = insert_right_to_win_score(
             conn, space["id"], distance, rtw_score, assets, rtw_justification
         )
         print(
             f"{space['label']} ({space['vertical']} x {space['use_case']} x {space['technology']})"
         )
-        print(f"  Attractiveness: {total}/10  {sub_scores}")
-        print(f"  Urgency:        {urgency}/10")
-        print(
-            f"  Right-to-win:   {rtw_score}/10  [{distance}] assets: {assets or 'none'}"
-        )
-        print(f"  -> {rtw_justification}")
+        if written:
+            print(f"  Attractiveness: {total}/10  {sub_scores}")
+            print(f"  Urgency:        {urgency}/10")
+        else:
+            refused.append(space["label"])
+            print(
+                f"  Attractiveness: NOT WRITTEN -- the LLM was unavailable, so {total}/10 is a neutral fallback; the previous real score was kept."
+            )
+        if rtw_written:
+            print(
+                f"  Right-to-win:   {rtw_score}/10  [{distance}] assets: {assets or 'none'}"
+            )
+            print(f"  -> {rtw_justification}")
+        else:
+            refused.append(space["label"])
+            print(
+                f"  Right-to-win:   NOT WRITTEN -- {rtw_justification} The previous real score was kept."
+            )
         if space["domain"] and (not force):
             print("  Enrichment: skipped (already enriched -- use --force to redo)")
         else:
@@ -458,12 +508,18 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
         distance, rtw_score, assets, rtw_justification = llm_right_to_win(
             space["vertical"], space["use_case"], space["technology"]
         )
-        insert_right_to_win_score(
+        rtw_written = insert_right_to_win_score(
             conn, space["id"], distance, rtw_score, assets, rtw_justification
         )
-        print(
-            f"REPAIRED {space['label']}: Right-to-win {rtw_score}/10 [{distance}] assets: {assets or 'none'}"
-        )
+        if rtw_written:
+            print(
+                f"REPAIRED {space['label']}: Right-to-win {rtw_score}/10 [{distance}] assets: {assets or 'none'}"
+            )
+        else:
+            refused.append(space["label"])
+            print(
+                f"NOT REPAIRED {space['label']}: the LLM was unavailable, so the previous real score was kept."
+            )
         if not space["domain"]:
             vertical = space["vertical"]
             signals = get_linked_signals_for_opportunity_space(conn, space["id"])
@@ -493,6 +549,12 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
             )
             recalibrate_deterministic_scores(conn, rows=stale_rows)
     conn.close()
+    if refused:
+        distinct = sorted(set(refused))
+        print(
+            f"\n{len(distinct)} opportunity space(s) kept their previous score because no LLM provider answered: {', '.join(distinct)}.\nFix the provider keys or quota and re-run (`python -m pipeline.scoring --rescue-fallback`)."
+        )
+    return refused
 
 
 def recalibrate_deterministic_scores(conn=None, rows=None):
@@ -708,7 +770,7 @@ def rescue_fallback_scores(conn=None):
         f"Rescuing {len(spaces)} opportunity space(s) that got a neutral fallback score (Groq quota was exhausted when they were first scored):\n"
     )
     for space in spaces:
-        sub_scores, total, urgency = score_opportunity_space(conn, space)
+        sub_scores, total, urgency, written = score_opportunity_space(conn, space)
         distance, rtw_score, assets, rtw_justification = llm_right_to_win(
             space["vertical"], space["use_case"], space["technology"]
         )
@@ -718,7 +780,11 @@ def rescue_fallback_scores(conn=None):
         print(
             f"{space['label']} ({space['vertical']} x {space['use_case']} x {space['technology']})"
         )
-        print(f"  Attractiveness: {total}/10  {sub_scores}")
+        print(
+            f"  Attractiveness: {total}/10  {sub_scores}"
+            if written
+            else "  Attractiveness: still a fallback -- the LLM is still unavailable."
+        )
         print(f"  Right-to-win:   {rtw_score}/10  [{distance}]")
         print(f"  -> {rtw_justification}\n")
         vertical = space["vertical"]
@@ -763,6 +829,10 @@ if __name__ == "__main__":
     elif "--prune-scores" in sys.argv:
         clean_scores()
     else:
-        score_all_opportunity_spaces(
+        refused = score_all_opportunity_spaces(
             force="--force" in sys.argv, from_label=from_label, to_label=to_label
         )
+        # A run where the LLM never answered is a failed run, not a rescore:
+        # exit non-zero so a script or CI step does not treat it as done.
+        if refused:
+            sys.exit(1)

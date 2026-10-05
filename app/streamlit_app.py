@@ -13,6 +13,7 @@ Run:
 """
 import pandas as pd
 import re
+import sqlite3
 import streamlit as st
 import sys
 from pathlib import Path
@@ -32,7 +33,27 @@ from pipeline.config import (
 st.set_page_config(
     page_title="Innovation Radar — Orange Business", layout="wide", page_icon="📡"
 )
-DARK_CSS = '\n<style>\n:root {\n    --radar-bg: #fffbf3;\n    --radar-panel: #f9f5f0;\n    --radar-orange: #ff7900;\n    --radar-orange-soft: #ffb066;\n    --radar-text: #002244;\n    --radar-muted: #5a6b7a;\n}\n.stApp { background-color: var(--radar-bg); color: var(--radar-text); }\nsection[data-testid="stSidebar"] { background-color: var(--radar-panel); border-right: 1px solid #e3ded2; }\nh1, h2, h3 { color: var(--radar-text) !important; }\n.stMetric { background-color: var(--radar-panel); border: 1px solid #e3ded2; border-radius: 10px; padding: 10px 14px; }\n[data-testid="stMetricValue"] { color: var(--radar-orange) !important; }\n/* st.metric labels ("Attractiveness", "Right to win", "Urgency")\n   were getting cut off with "..." in the narrow detail-panel columns. This\n   lets the label text wrap onto a second line instead of being truncated. */\n[data-testid="stMetricLabel"] p {\n    white-space: normal !important;\n    overflow: visible !important;\n    text-overflow: unset !important;\n}\n.stTabs [data-baseweb="tab"] { color: var(--radar-muted); }\n.stTabs [aria-selected="true"] { color: var(--radar-orange) !important; border-bottom-color: var(--radar-orange) !important; }\n.stAlert { background-color: var(--radar-panel); border-left: 3px solid var(--radar-orange); }\ndiv[data-testid="stDataFrame"] { border: 1px solid #e3ded2; border-radius: 8px; }\n</style>\n'
+DARK_CSS = '\n<style>\n:root {\n    --radar-bg: #fffbf3;\n    --radar-panel: #f9f5f0;\n    /* Two oranges on purpose. --radar-orange is the brand orange and is only\n       used for marks (chart lines, fills, borders, the tab underline), where\n       contrast is judged against the 3:1 graphics rule. On the panel\n       background it measures about 2.3:1, which fails the 4.5:1 text rule, so\n       every piece of orange TEXT -- metric values, selected tab label -- uses\n       --radar-orange-text instead (about 4.6:1 on the panel). */\n    --radar-orange: #ff7900;\n    --radar-orange-text: #b35400;\n    --radar-orange-soft: #ffb066;\n    --radar-text: #002244;\n    --radar-muted: #5a6b7a;\n}\n.stApp { background-color: var(--radar-bg); color: var(--radar-text); }\nsection[data-testid="stSidebar"] { background-color: var(--radar-panel); border-right: 1px solid #e3ded2; }\nh1, h2, h3 { color: var(--radar-text) !important; }\n.stMetric { background-color: var(--radar-panel); border: 1px solid #e3ded2; border-radius: 10px; padding: 10px 14px; }\n[data-testid="stMetricValue"] { color: var(--radar-orange-text) !important; }\n/* st.metric labels ("Attractiveness", "Right to win", "Urgency")\n   were getting cut off with "..." in the narrow detail-panel columns. This\n   lets the label text wrap onto a second line instead of being truncated. */\n[data-testid="stMetricLabel"] p {\n    white-space: normal !important;\n    overflow: visible !important;\n    text-overflow: unset !important;\n}\n.stTabs [data-baseweb="tab"] { color: var(--radar-muted); }\n.stTabs [aria-selected="true"] { color: var(--radar-orange-text) !important; border-bottom-color: var(--radar-orange) !important; }\n.stAlert { background-color: var(--radar-panel); border-left: 3px solid var(--radar-orange); }\ndiv[data-testid="stDataFrame"] { border: 1px solid #e3ded2; border-radius: 8px; }\n</style>\n'
+# Shown under the title on every rerun and repeated in the footer. The
+# dashboard presents LLM-generated scores, justifications and "do this next"
+# actions as if they were measurements; the EU AI Act requires that a user be
+# told when the output they are reading was machine-generated.
+AI_DISCLOSURE = (
+    "⚠️ AI-generated content: the evidence-quality, strategic-relevance and "
+    "right-to-win scores, every justification and every \"do this next\" action "
+    "on this page are produced by a large language model from the linked "
+    "signals. They are a starting point for a human judgement, not a "
+    "measurement — read the grounding sources in the \"Sources\" tab and have "
+    "them reviewed before acting on them."
+)
+DB_MISSING_HINT = (
+    "Could not read `radar.db`. The dashboard is read-only: it needs a database "
+    "the pipeline has already filled.\n\n"
+    "Run the pipeline from the repo root:\n\n"
+    "`python -m pipeline.ingest` → `python -m pipeline.analyze` → "
+    "`python radar_cli.py create` → `python radar_cli.py link` → "
+    "`python -m pipeline.scoring`"
+)
 st.markdown(DARK_CSS, unsafe_allow_html=True)
 HORIZON_RADIUS = {"Now": 0.28, "Next": 0.6, "Later": 0.92}
 DOMAIN_NAMES = [d["name"] for d in DOMAINS_TAXONOMY]
@@ -48,6 +69,10 @@ def load_scores():
     every widget interaction does not re-query SQLite, while a pipeline run
     still shows up within a minute. Missing enrichment is filled with explicit
     "Unassigned"/"Later" labels so filters and the radar can group them.
+
+    Raises sqlite3.Error / OSError untouched: sqlite3.connect() happily creates
+    an empty file when radar.db is absent, so a missing database surfaces here
+    as "no such table". The caller turns that into DB_MISSING_HINT.
     """
     conn = get_connection()
     rows = get_latest_scores(conn)
@@ -74,6 +99,30 @@ def load_scores():
     df["buyer_persona"] = df["buyer_persona"].fillna("Unassigned")
     df["geography"] = df["geography"].fillna("Unassigned")
     return (df, signals_by_os, total_os_count)
+
+
+def is_linkable_url(raw) -> bool:
+    """True if a signal's source_url is safe to render as a markdown link.
+
+    Signals come from feeds and tender exports, so source_url is sometimes a
+    bare file path, a "mailto:" or a "javascript:" string. Only http(s) becomes
+    a clickable link; anything else is shown as plain text.
+    """
+    return isinstance(raw, str) and raw.strip().lower().startswith(
+        ("http://", "https://")
+    )
+
+
+def top_opportunity_label(frame, score_column="total_score", label_column="label"):
+    """Label of the highest-scoring row, or None if there is no ranking.
+
+    idxmax() raises on an all-NaN column, which happens as soon as the filters
+    select only opportunity spaces whose score is missing. The metric shows a
+    dash in that case instead of crashing the page.
+    """
+    if frame.empty or frame[score_column].isna().all():
+        return None
+    return frame.loc[frame[score_column].idxmax(), label_column]
 
 
 def domain_angle(domain, seed):
@@ -127,7 +176,13 @@ st.sidebar.caption("Orange Business · opportunity spaces")
 role = st.sidebar.radio(
     "Role", ["Strategist / Innovator", "Sales", "Presales / Proposal"], index=0
 )
-df, signals_by_os, total_os_count = load_scores()
+try:
+    df, signals_by_os, total_os_count = load_scores()
+except (sqlite3.Error, OSError) as exc:
+    st.title("📡 Innovation Radar")
+    st.error(DB_MISSING_HINT)
+    st.caption(f"SQLite reported: {exc}")
+    st.stop()
 if df.empty:
     st.title("📡 Innovation Radar")
     if total_os_count == 0:
@@ -226,6 +281,7 @@ st.title("📡 Innovation Radar")
 st.caption(
     f"{role} · ordered by {sort_by.lower()} · {total_os_count} opportunity spaces tracked"
 )
+st.warning(AI_DISCLOSURE)
 st.subheader("📊 Overview")
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
@@ -249,9 +305,16 @@ with col3:
     median_attractiveness = filtered["total_score"].median()
     st.metric("Median Attractiveness", f"{median_attractiveness:.2f}/10")
 with col4:
-    best_index = filtered["total_score"].idxmax()
-    best_opportunity = filtered.loc[best_index, "label"]
-    st.metric("Top Opportunity", best_opportunity)
+    best_opportunity = top_opportunity_label(filtered)
+    st.metric(
+        "Top Opportunity",
+        best_opportunity or "—",
+        help=(
+            None
+            if best_opportunity
+            else "No attractiveness score among the opportunity spaces matching these filters."
+        ),
+    )
 with col5:
     st.markdown("**By quadrant**")
     st.caption(
@@ -503,7 +566,6 @@ with tab_score:
 with tab_evidence:
     st.markdown(f"**Matched assets:** {row.matched_assets or 'none'}")
     st.write(row.justification or "No right-to-win justification recorded.")
-with tab_evidence:
     st.markdown("#### 🧭 Strategic position")
     attractiveness = row.total_score
     right_to_win = row.right_to_win_score
@@ -586,8 +648,10 @@ with tab_signals:
                         st.write(sig["summary"])
                     if sig.get("collected_at"):
                         st.caption(f"Collected: {sig['collected_at']}")
-                    if sig.get("source_url"):
-                        st.markdown(f"[🔗 Open source]({sig['source_url']})")
+                    if is_linkable_url(sig.get("source_url")):
+                        st.markdown(f"[🔗 Open source]({sig['source_url'].strip()})")
+                    elif sig.get("source_url"):
+                        st.caption(f"Source reference: {sig['source_url']}")
 st.divider()
 st.subheader(f"All matching opportunity spaces ({len(filtered)})")
 st.dataframe(
@@ -622,6 +686,7 @@ st.dataframe(
     hide_index=True,
 )
 st.divider()
+st.caption(AI_DISCLOSURE)
 st.caption(
     f"Orange Business Innovation Radar • Data powered by radar.db • Viewing as: {role}"
 )
