@@ -1,0 +1,19 @@
+# Local run of the Innovation Radar:
+#
+#   docker compose up --build                                   # dashboard on http://localhost:8501
+#   docker compose run --rm dashboard python radar_cli.py all   # the pipeline, same image, same .env
+#
+# The host's radar.db is mounted over the copy in the image, so a pipeline run
+# (from the container or the host) is what the dashboard shows, and nothing
+# is lost when the container is removed. .env is read at run time only.
+services:
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false   # the dashboard needs no key; the pipeline reads the LLM keys from it
+    volumes:
+      - ./radar.db:/app/radar.db
+    restart: unless-stopped
