@@ -1,0 +1,28 @@
+# Secrets, local environments and anything the running app never reads stay
+# out of the image.
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+orange.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.git/
+.github/
+docs/
+tests/
+screenshots/
+logs/
+*.zip
+*.log
+# Power BI files and exports: opened on a workstation, not served.
+app/*.pbix
+app/*.pbip
+app/innovation_radar_dashboard.Report/
+app/innovation_radar_dashboard.SemanticModel/
+app/powerbi_data/
+Dockerfile
+docker-compose.yml
+.dockerignore

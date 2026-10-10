@@ -10,6 +10,7 @@ fails with a clear error instead.
 """
 import socket
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,37 @@ def _blocked(*args, **kwargs):
     )
 
 
+# Set only while socket.socketpair() runs. Where the OS has no native
+# socketpair (Windows), Python emulates it by connecting to a listener on
+# 127.0.0.1, and asyncio -- which Streamlit's AppTest starts -- creates one
+# for its wake-up pipe. That connection never leaves the process, so it is
+# let through for exactly that call; every other loopback connection (a local
+# Ollama, for one) stays refused like the rest of the network.
+_in_socketpair = threading.local()
+
+
+def _guard(original):
+    """`original` for the connection socketpair makes of itself, `_blocked` otherwise."""
+
+    def guarded(*args, **kwargs):
+        if getattr(_in_socketpair, "active", False):
+            return original(*args, **kwargs)
+        return _blocked(*args, **kwargs)
+
+    return guarded
+
+
+def _socketpair_allowing_its_own_connect(original):
+    def socketpair(*args, **kwargs):
+        _in_socketpair.active = True
+        try:
+            return original(*args, **kwargs)
+        finally:
+            _in_socketpair.active = False
+
+    return socketpair
+
+
 @pytest.fixture(autouse=True)
 def block_network(monkeypatch):
     """Make any attempt to reach the network raise.
@@ -38,6 +70,7 @@ def block_network(monkeypatch):
     on files and :memory:, never on a socket) keeps working -- only an actual
     connection is refused.
     """
-    monkeypatch.setattr(socket.socket, "connect", _blocked)
-    monkeypatch.setattr(socket.socket, "connect_ex", _blocked)
-    monkeypatch.setattr(socket, "create_connection", _blocked)
+    monkeypatch.setattr(socket.socket, "connect", _guard(socket.socket.connect))
+    monkeypatch.setattr(socket.socket, "connect_ex", _guard(socket.socket.connect_ex))
+    monkeypatch.setattr(socket, "create_connection", _guard(socket.create_connection))
+    monkeypatch.setattr(socket, "socketpair", _socketpair_allowing_its_own_connect(socket.socketpair))

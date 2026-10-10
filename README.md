@@ -90,7 +90,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 128 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 136 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
@@ -103,6 +103,22 @@ Then open `app/innovation_radar_dashboard.pbip` and click Refresh. The CSV folde
 `DataFolder` parameter (Transform data > Manage parameters). It holds an absolute path,
 so set it on a fresh clone or if the repo moves; the export script prints a warning with
 the value to use when it does not match.
+
+## Deploying
+
+- **Docker**: `docker compose up --build` serves the dashboard on
+  http://localhost:8501 with the host's `radar.db` mounted in, and
+  `docker compose run --rm dashboard python radar_cli.py all` runs the
+  pipeline in the same image with the keys from `.env`.
+- **Render**: `render.yaml` deploys the same image as a free web service
+  serving the committed `radar.db`; push a new database to refresh it. Not
+  exercised by CI: the first deploy is the test.
+- **Streamlit Community Cloud**: point it at `app/streamlit_app.py`;
+  `requirements.txt` and `.streamlit/config.toml` are read as they are, and
+  the dashboard needs no secret.
+
+CI (`.github/workflows/tests.yml`) runs the suite and builds the image on
+every push.
 
 ## Key challenges
 
