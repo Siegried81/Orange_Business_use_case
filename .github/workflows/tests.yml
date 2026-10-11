@@ -1,0 +1,32 @@
+# Runs the offline test suite on every push and pull request, and checks that
+# the dashboard image still builds. conftest.py blocks sockets, so a test that
+# forgets to mock a feed or an LLM call fails here too, not only locally.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t innovation-radar .
+      # The image must at least import the dashboard's modules with the
+      # committed database, which is all a cold start on Render does.
+      - run: docker run --rm innovation-radar python -c "import sys; sys.path.insert(0, '.'); from pipeline.db import get_connection; get_connection().close(); print('ok')"

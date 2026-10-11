@@ -158,3 +158,20 @@ revisit it. Append only — never rewrite a past entry.
   byte-identical to the previous export on the current DB.
 - **Revisit if:** Power BI gains relative paths, or the report moves to a
   shared data source.
+
+## 2026-10-10 — Foreign keys enforced; child tables rebuilt onto the live parent
+
+- **What:** `get_connection()` runs `PRAGMA foreign_keys = ON`, and `init_db()`
+  calls `repair_foreign_key_targets()`, which rebuilds any child table whose
+  FOREIGN KEY clause names a table that no longer exists. `radar.db` was
+  repaired with it and committed.
+- **Why:** the three child tables (`opportunity_signals`, `scores`,
+  `right_to_win_scores`) referenced `"opportunity_spaces_old"`, a table a past
+  migration renamed and then dropped — SQLite rewrites references on RENAME. All
+  3,585 rows therefore counted as violations while every id matched the live
+  table (0 orphans). With foreign keys off nothing noticed; with them on, every
+  insert into those tables would have failed with "no such table".
+- **What changes in the numbers:** nothing. Rows are copied one to one; the
+  repair is idempotent and a healthy database is left alone.
+- **Revisit if:** a future migration renames a parent table — set
+  `PRAGMA legacy_alter_table = ON` around the rename, or run the repair after.
