@@ -10,12 +10,19 @@
   # Same, and also (re)start every compose project in the background
   .\update-all.ps1 -Root "D:\Users\Siegried\Desktop\Becode" -Run
 
+  # Skip every path matching a regex (e.g. old copies of repos)
+  .\update-all.ps1 -Root "D:\Users\Siegried\Desktop\Becode" -Exclude "backup|\\old\\"
+
 .NOTES
   Why it is built this way:
   - Repos are found recursively (depth 3), so nested folders like
     Becode\projects\my-repo are covered too.
-  - A repo with uncommitted changes is SKIPPED, never touched: a checkout or
-    pull there could mix your local work with main.
+  - A repo with uncommitted changes to TRACKED files is SKIPPED, never
+    touched: a checkout or pull there could mix your local work with main.
+    Untracked files (.venv, data, notebooks...) do not block a pull, so they
+    do not count.
+  - Docker is checked once up front: if it is not running, git is still
+    updated and the builds are skipped instead of failing repo after repo.
   - The backup is a `git bundle` (all branches + history, a few MB), not a zip:
     a zip would also copy .venv / node_modules and take minutes per repo.
     Restore with: git clone <file>.bundle restored-repo
@@ -26,7 +33,8 @@
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Root,   # folder holding the clones
-    [switch]$Run                                    # also `docker compose up -d`
+    [switch]$Run,                                   # also `docker compose up -d`
+    [string]$Exclude = ""                           # regex of paths to skip
 )
 
 $ErrorActionPreference = "Continue"
@@ -35,10 +43,16 @@ New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
 $stamp = Get-Date -Format "yyyyMMdd_HHmm"
 $report = @()
 
+# Docker reachable? (Docker Desktop must be started)
+docker info *> $null
+$dockerOk = ($LASTEXITCODE -eq 0)
+if (-not $dockerOk) { Write-Host "Docker unreachable -> git only, builds skipped" -ForegroundColor Yellow }
+
 # Every folder that contains a .git directory is a repo
 $repos = Get-ChildItem $Root -Directory -Recurse -Depth 3 -Force -Filter ".git" -ErrorAction SilentlyContinue |
          ForEach-Object { $_.Parent } |
-         Where-Object { $_.FullName -notlike "$backupDir*" }
+         Where-Object { $_.FullName -notlike "$backupDir*" } |
+         Where-Object { -not $Exclude -or $_.FullName -notmatch $Exclude }
 
 foreach ($r in $repos) {
     $repo = $r.FullName
@@ -46,7 +60,7 @@ foreach ($r in $repos) {
     Write-Host "`n=== $name ===" -ForegroundColor Cyan
 
     # 1. Skip repos with local, uncommitted work
-    if (git -C $repo status --porcelain) {
+    if (git -C $repo status --porcelain --untracked-files=no) {
         Write-Host "Uncommitted changes -> skipped (commit or stash first)" -ForegroundColor Yellow
         $report += [pscustomobject]@{ Repo = $name; Git = "SKIPPED (dirty)"; Docker = "-" }
         continue
@@ -67,7 +81,9 @@ foreach ($r in $repos) {
     # 4. Docker: compose file first (any of the standard names), plain Dockerfile otherwise
     $compose = @("compose.yaml", "compose.yml", "docker-compose.yml", "docker-compose.yaml") |
                ForEach-Object { Join-Path $repo $_ } | Where-Object { Test-Path $_ } | Select-Object -First 1
-    if ($compose) {
+    if (-not $dockerOk -and ($compose -or (Test-Path (Join-Path $repo "Dockerfile")))) {
+        $dockerStatus = "skipped (Docker off)"
+    } elseif ($compose) {
         docker compose -f $compose build
         if ($Run -and $LASTEXITCODE -eq 0) { docker compose -f $compose up -d }
         $dockerStatus = if ($LASTEXITCODE -eq 0) { "built (compose)" } else { "BUILD FAILED" }
@@ -81,7 +97,7 @@ foreach ($r in $repos) {
 }
 
 # Old image layers replaced by the rebuilds
-docker image prune -f | Out-Null
+if ($dockerOk) { docker image prune -f | Out-Null }
 
 Write-Host "`n===== SUMMARY =====" -ForegroundColor Green
 $report | Format-Table -AutoSize
