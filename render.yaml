@@ -1,0 +1,12 @@
+# Render blueprint: the dashboard as one Docker web service.
+#
+# It serves the committed radar.db; the pipeline is not run there (no LLM key
+# is needed for the dashboard, so none is declared). Push a new radar.db to
+# refresh the data. Not exercised by CI: the first deploy is the test.
+services:
+  - type: web
+    name: innovation-radar
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /_stcore/health

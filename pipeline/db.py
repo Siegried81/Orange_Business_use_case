@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pipeline.config import DB_PATH, VERTICALS
@@ -6,9 +7,69 @@ SCHEMA = "\nCREATE TABLE IF NOT EXISTS signals (\n    id INTEGER PRIMARY KEY AUT
 
 
 def get_connection():
+    """One connection, with foreign keys enforced.
+
+    SQLite leaves foreign keys OFF per connection unless asked, so the
+    REFERENCES clauses in SCHEMA were documentation: a score could point at an
+    opportunity space that no longer existed and nothing would say so. Every
+    connection the pipeline opens goes through here, so this is the one place
+    to turn them on. `repair_foreign_key_targets` has to run once first on a
+    database whose child tables still reference a renamed parent.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+# The child tables whose FOREIGN KEY clauses can be left pointing at a table
+# that no longer exists. `ALTER TABLE ... RENAME` rewrites the references other
+# tables hold to the renamed table, so a migration that renamed
+# opportunity_spaces to opportunity_spaces_old, recreated it and dropped the
+# old one left all three children referencing "opportunity_spaces_old": every
+# row then counts as a foreign-key violation while the ids themselves are fine.
+_CHILD_TABLES = ("opportunity_signals", "scores", "right_to_win_scores")
+
+
+def _dangling_fk_targets(conn, table):
+    """The tables `table`'s FOREIGN KEY clauses name that do not exist."""
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+    if row is None:
+        return []
+    live = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    return [t for t in re.findall(r'REFERENCES\s+"?(\w+)"?', row[0]) if t not in live]
+
+
+def repair_foreign_key_targets(conn):
+    """Rebuild any child table whose foreign keys name a table that is gone.
+
+    The rebuild is the standard SQLite one, since a FOREIGN KEY clause cannot be
+    altered in place: rename the broken table aside, recreate it from SCHEMA
+    (whose clauses name the live parent), copy the columns both versions share,
+    drop the old one. Foreign keys are switched off for the duration because
+    the rename itself would otherwise be refused, and `legacy_alter_table` is
+    set so that the rename does not rewrite references yet again. Returns the
+    tables rebuilt, and leaves `PRAGMA foreign_key_check` empty on a database
+    whose rows were consistent all along, which is the case this was written
+    for: no row is dropped or changed.
+    """
+    rebuilt = []
+    for table in _CHILD_TABLES:
+        if not _dangling_fk_targets(conn, table):
+            continue
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("PRAGMA legacy_alter_table = ON")
+        conn.execute(f"ALTER TABLE {table} RENAME TO {table}__broken")
+        conn.executescript(SCHEMA)  # recreates `table` with the live parent
+        old_cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table}__broken)")}
+        cols = ", ".join(r[1] for r in conn.execute(f"PRAGMA table_info({table})") if r[1] in old_cols)
+        conn.execute(f"INSERT INTO {table} ({cols}) SELECT {cols} FROM {table}__broken")
+        conn.execute(f"DROP TABLE {table}__broken")
+        conn.commit()
+        conn.execute("PRAGMA legacy_alter_table = OFF")
+        conn.execute("PRAGMA foreign_keys = ON")
+        rebuilt.append(table)
+    return rebuilt
 
 
 MIGRATIONS = [
@@ -80,6 +141,8 @@ def ensure_opportunity_space_uniqueness(conn):
 def init_db():
     conn = get_connection()
     conn.executescript(SCHEMA)
+    for table in repair_foreign_key_targets(conn):
+        print(f"[init_db] rebuilt {table}: its foreign keys named a table that no longer exists")
     migrate_schema(conn)
     dedupe_opportunity_spaces(conn)
     ensure_opportunity_space_uniqueness(conn)
