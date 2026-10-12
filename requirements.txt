@@ -8,7 +8,7 @@ python-dotenv==1.2.4
 # A floor, not an exact pin: the dashboard uses width="stretch",
 # on_select="rerun" and st.query_params, which only exist from 1.49 on, and
 # Streamlit Cloud upgrades its runtime under us, so an exact pin breaks deploys.
-streamlit>=1.49
+streamlit>=1.65.0
 plotly==7.1.0
 pandas==3.0.6
 pytest==9.1.1
