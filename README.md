@@ -2,6 +2,8 @@
 
 A signal-driven opportunity discovery tool built for an Orange Business use case. It ingests external market signals (news, research, regulation, public procurement...), scores them into ranked Opportunity Spaces, and surfaces them through an interactive dashboard.
 
+How the scores are computed, why the code is built this way, and what is still open: [technical deep dive](docs/technical_deep_dive.md). Dated decisions: [docs/decisions.md](docs/decisions.md).
+
 ## What it does
 
 I built a pipeline that turns scattered external signals into scored, ranked opportunity spaces:
