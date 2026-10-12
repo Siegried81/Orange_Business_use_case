@@ -30,14 +30,39 @@ from pipeline.config import (
     TED_LOOKBACK_DAYS,
 )
 from llm.llm_client import get_llm_json
+from pipeline.ahp import ahp_weights
 
-WEIGHTS = {
+# Two named weightings of the five attractiveness sub-scores. "manual" is the
+# hand-set 30/20/25/10/15 the radar started with; "ahp" is the priority vector
+# of the pairwise judgments in pipeline/ahp_weights.xlsx, computed by
+# pipeline/ahp.py, which refuses judgments with a consistency ratio >= 0.10.
+# WEIGHTING picks the default; `python -m pipeline.scoring --weights=manual`
+# overrides it for one run.
+MANUAL_WEIGHTS = {
     "market_signal_strength": 0.3,
     "source_diversity": 0.2,
     "evidence_quality": 0.25,
     "novelty_momentum": 0.1,
     "strategic_relevance": 0.15,
 }
+WEIGHTING = "ahp"
+
+
+def attractiveness_weights(name=WEIGHTING):
+    """Return the named weighting as {sub_score: weight}, summing to 1."""
+    if name == "manual":
+        return dict(MANUAL_WEIGHTS)
+    if name == "ahp":
+        weights, _ = ahp_weights()
+        if set(weights) != set(MANUAL_WEIGHTS):
+            raise ValueError(
+                f"AHP sheet criteria {sorted(weights)} do not match the sub-scores {sorted(MANUAL_WEIGHTS)}"
+            )
+        return weights
+    raise ValueError(f"Unknown weighting {name!r}: use 'ahp' or 'manual'")
+
+
+WEIGHTS = attractiveness_weights()
 MARKET_SIGNAL_CAP = 56
 SOURCE_DIVERSITY_CAP = 40
 EVIDENCE_QUALITY_MAX_SIGNALS = 15
@@ -816,6 +841,12 @@ if __name__ == "__main__":
             from_label = arg.split("=", 1)[1]
         elif arg.startswith("--to="):
             to_label = arg.split("=", 1)[1]
+        elif arg.startswith("--weights="):
+            WEIGHTS = attractiveness_weights(arg.split("=", 1)[1])
+    print(
+        "Attractiveness weights: "
+        + ", ".join(f"{k} {v:.1%}" for k, v in WEIGHTS.items())
+    )
     if "--refresh" in sys.argv:
         recalibrate_deterministic_scores()
     elif "--recalibrate-urgency" in sys.argv:

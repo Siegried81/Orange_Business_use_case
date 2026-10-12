@@ -175,3 +175,33 @@ revisit it. Append only — never rewrite a past entry.
   repair is idempotent and a healthy database is left alone.
 - **Revisit if:** a future migration renames a parent table — set
   `PRAGMA legacy_alter_table = ON` around the rename, or run the repair after.
+
+## 2026-10-12 — Attractiveness weights from the AHP sheet
+
+- **What:** `pipeline/ahp.py` reads the upper triangle of
+  `pipeline/ahp_weights.xlsx`, rebuilds the reciprocal matrix, and computes the
+  priority vector (normalised row geometric means, the sheet's own method) and
+  the consistency ratio (Saaty RI, 1.12 for 5 criteria); it refuses judgments
+  with CR >= 0.10. `pipeline/scoring.py` has two named weightings, `ahp` (the
+  default, `WEIGHTING`) and `manual` (the hand-set 30/20/25/10/15), and
+  `python -m pipeline.scoring --weights=manual` selects the latter for a run.
+  The sheet moved from `tests/` to `pipeline/` because the Docker image, which
+  runs the pipeline, excludes `tests/`; `openpyxl==3.1.5` joins
+  `requirements.txt` to read it.
+- **Why:** the weights were a hand choice; the sheet held the team's pairwise
+  judgments but nothing read it.
+- **Changes the numbers:** weights market/evidence/diversity/relevance/novelty
+  go from 30/25/20/15/10 to 39.7/27.8/14.1/13.0/5.5 (CR 0.021; the principal
+  eigenvector agrees within 0.2 points). Re-totalled from the stored
+  sub-scores of all 133 OS on the committed database: the top 15 keep the same
+  members, with 4 adjacent swaps (OS013 5th / OS001 4th, OS134 11th -> 9th,
+  OS029 9th -> 10th, OS017 12th -> 11th, OS014 10th -> 12th); 103 OS change
+  rank, by at most 11 places; totals move by at most 0.42; quadrants
+  strong/needs capability/moderate/low 16/5/77/35 -> 19/5/74/35 (OS034, OS065,
+  OS108 become strong; OS073 low -> needs capability; OS002 needs capability
+  -> low). The committed `radar.db` keeps the manual-weight totals until
+  scoring is re-run; `scoring --refresh` re-totals without calling the LLM.
+- **Revisit if:** outcome data (won/lost opportunities) becomes available --
+  AHP makes judgments consistent, it does not validate them. Changing a
+  judgment means editing the yellow cells of the sheet; the code recomputes
+  and re-checks CR on the next run.
