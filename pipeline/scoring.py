@@ -291,9 +291,29 @@ def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
     return (score, justification)
 
 
-def crm_customer_overlap_bonus(vertical) -> float:
-    count = sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
-    return min(1.0, count * 0.5)
+# Right-to-win bonus per named customer reference (config.CUSTOMER_REFERENCES)
+# in the OS's vertical, and its cap. Both are judgment, not fitted: the radar
+# has no won/lost record to fit them against. How many OS would change with
+# another value is re-derived from radar.db by scripts/rtw_bonus_sensitivity.py
+# (table in docs/technical_deep_dive.md §2.2). The same references are also in
+# the right-to-win prompt, so the LLM may already have counted them once.
+CUSTOMER_REFERENCE_BONUS = 0.5
+CUSTOMER_REFERENCE_BONUS_CAP = 1.0
+
+
+def customer_reference_count(vertical) -> int:
+    return sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
+
+
+def customer_reference_bonus(vertical, per_reference=None, cap=None) -> float:
+    """Right-to-win bonus for the vertical's named customer references, capped.
+
+    `per_reference` and `cap` default to the module constants at call time,
+    so a sensitivity run can pass other values without touching them.
+    """
+    per_reference = CUSTOMER_REFERENCE_BONUS if per_reference is None else per_reference
+    cap = CUSTOMER_REFERENCE_BONUS_CAP if cap is None else cap
+    return min(cap, customer_reference_count(vertical) * per_reference)
 
 
 def llm_right_to_win(vertical, use_case, technology):
@@ -328,10 +348,15 @@ def llm_right_to_win(vertical, use_case, technology):
         )
         distance = "L4"
     assets = ", ".join(result.get("matched_assets", []))
-    crm_bonus = crm_customer_overlap_bonus(vertical)
-    if crm_bonus:
-        score = min(10.0, score + crm_bonus)
-        justification += f" +{crm_bonus:.1f} calibration bonus (CRM customer overlap)."
+    reference_bonus = customer_reference_bonus(vertical)
+    if reference_bonus:
+        score = min(10.0, score + reference_bonus)
+        # scripts/rtw_bonus_sensitivity.py reads the bonus back from
+        # "+<value> calibration bonus": keep that phrase.
+        justification += (
+            f" +{reference_bonus:.2f} calibration bonus "
+            f"({customer_reference_count(vertical)} named customer reference(s) in {vertical})."
+        )
     return (distance, score, assets, justification)
 
 
