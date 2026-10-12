@@ -5,9 +5,9 @@ Opportunity Space, what every score formula actually measures, which parts are a
 LLM judgment and which are arithmetic, and the defects that shaped the code.
 
 Figures come from `radar.db` — signals collected up to 30 August 2026, scored on
-30 September 2026 — and from a real run of the test suite on 5 October 2026, not
-from memory. `radar.db` is not versioned, so they describe that database, not
-whatever a fresh clone would produce. Where a figure could only be obtained by
+30 September 2026 — and from a real run of the test suite on 12 October 2026, not
+from memory. `radar.db` is a committed snapshot, so they describe that database,
+not whatever a fresh ingest would produce. Where a figure could only be obtained by
 calling the LLM again it is marked as measured on an earlier run and not
 re-verified. The dated reasoning behind each change lives in
 [`decisions.md`](decisions.md).
@@ -35,7 +35,7 @@ One pipeline, one SQLite file, two dashboards reading it.
         │        (27 seeds + recurring themes;                 ──► proposals
         │         UNIQUE(vertical, use_case, technology))       ──► radar_cli.py review (human)
         ▼                                                       ──► taxonomy_extensions.json
-   radar_cli.py link ── keyword overlap, per vertical,
+   radar_cli.py link ── >= 2 shared keywords, per vertical,
         │               top 56 signals per OS               ──► opportunity_signals
         ▼
    scoring.py ── 3 deterministic sub-scores + urgency (no LLM)
@@ -57,7 +57,7 @@ State of the current database:
 |---|---|
 | Signals | 4,272 (published May 1992 to August 2026, mostly recent; 9 undated; last collected 30/08/2026) |
 | Opportunity Spaces | 133 (OS001 to OS135; OS052 and OS053 were the removed duplicates) |
-| Signal links | 3,319, every OS has at least one |
+| Signal links | 3,319, every OS has at least one — made under the old one-keyword rule; re-running `link` with the 2-keyword minimum leaves 469 and 32 OS with none (§8) |
 | Recurring themes tracked / promoted | 263 / 124 |
 | Watchlist terms / proposals | 235 / 8 (all rejected) |
 | Right-to-win levels | L0 10, L1 79, L2 0, L3 43, L4 1 |
@@ -74,7 +74,7 @@ linked signals.
 
 | Sub-score | Weight | Formula | How to read it |
 |---|---|---|---|
-| Market signal strength | 30% | `min(10, n / 56 × 10)` | Raw volume. 56 = `MARKET_SIGNAL_CAP`, equal to `link`'s `top_n`, so an OS reaches 10 exactly when `link` has to start cutting. The current 90th percentile of keyword-matching signals per OS is 52 (`calibrate_output.txt`), so 56 is not that percentile. |
+| Market signal strength | 30% | `min(10, n / 56 × 10)` | Raw volume. 56 = `MARKET_SIGNAL_CAP`, equal to `link`'s `top_n`, so an OS reaches 10 exactly when `link` has to start cutting. Under the 2-keyword minimum the 90th percentile of matching signals per OS is 9 and the maximum 37 (`calibrate_output.txt`, on a relinked copy of the database), so no OS reaches 56 and this sub-score tops out at 6.6 until the cap is revisited (§8). |
 | Source diversity | 20% | `min(10, distinct source_name / 40 × 10)` | Counts distinct *publishers*, not connectors: for Google News and GDELT, `source_name` is the outlet (1,335 names in the DB for 9 connectors). TED and EUR-Lex are forced to one name each so a mirror site cannot count twice: 623 EUR-Lex signals and 185 TED signals sit under one name apiece. The fix only applies going forward, so 6 pre-fix rows still carry `docs.ted.europa.eu`; none of them is linked to an OS, so none reaches this sub-score. |
 | Evidence quality | 25% | LLM, 0–10, on the first 15 linked titles with their source | "Are these specific, credible, relevant?" 0.0 when the OS has no signal; 5.0 with the justification "LLM scoring unavailable" when no provider answered. |
 | Novelty / momentum | 10% | share of dated signals in the most recent third of the window [oldest signal, now], × 10 | Acceleration, not just recency. Uses `published_date`, falls back to `collected_at`. Neutral 5.0 below 3 datable signals. |
@@ -166,7 +166,7 @@ A missing score yields no quadrant rather than "low".
 | `pipeline/scoring.py` | 837 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
 | `pipeline/db.py` | 564 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker. |
 | `llm/llm_client.py` | 271 | Provider chain, Groq key rotation, JSON extraction. |
-| `radar_cli.py` | 643 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
+| `radar_cli.py` | 673 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
 | `app/streamlit_app.py` | 691 | Polar radar and bubble views, sidebar filters (vertical, domain, horizon, owning team, buyer persona, geography), per-OS breakdown and next actions per role. |
 | `radar_cli_top_15.py`, `pipeline/signals_discovery.py` | 518, 58 | Older CLI and its copy of `theme_promotion`, kept on purpose (see `decisions.md`). |
 | `scripts/` | | One-off healthcare analysis, run from the repo root. |
@@ -214,7 +214,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-128 tests, all passing on 5 October 2026, no network (`python -m pytest`, a few
+143 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -226,9 +226,13 @@ reaching the internet.
 | `tests/test_export_powerbi.py` | 17 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB. |
 | `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
 | `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
+| `tests/test_foreign_keys.py` | 4 | Foreign keys enforced per connection; child tables still pointing at a renamed parent rebuilt onto the live one. |
+| `tests/test_network_guard.py` | 4 | The socket guard in `conftest.py`: every connection refused except the one `socketpair()` makes to itself. |
+| `tests/test_link_keywords.py` | 7 | `link` needs 2 distinct shared keywords; links below the minimum are pruned for the OS they are weak for only; `calibrate` counts with the same minimum. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
-monkeypatched at `scoring.get_llm_json`). There is no CI; the suite is run by hand.
+monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`) runs
+the suite on every push.
 
 ---
 
@@ -343,7 +347,7 @@ temperature 0, which makes repeated calls close, not identical.
 
 | Open issue | Why it matters |
 |---|---|
-| `link` accepts a single shared keyword | 12 links (6 articles from general outlets) are off-topic: "Natasha Cloud" → Cloud, strikes on Ukraine's "energy sector" → Energy. That 12/6 is a hand count over the link table, not a query, so it is not re-derived here; the two named articles account for 4 of the links in the committed database. Requiring 2 keywords would change every link — team decision. |
+| `link` now needs 2 shared keywords — and 32 OS have none | `MIN_KEYWORD_OVERLAP = 2` in `radar_cli.py`. On a seeded, hand-checked sample of 120 committed links (`docs/link_sample_2026-10-12.csv`), 31 of 80 single-keyword links were off-topic against 3 of 40 at two or more; "1 keyword + same vertical" kept 13 of 40 off-topic, "Natasha Cloud" → Cloud among them. Re-linking a copy of the committed database: 3,319 → 469 links. Extrapolating the sample rates to the 2,850 dropped links, about 1,070 off-topic links go and about 1,780 legitimate ones go with them. **32 of 133 OS end with no link at all**, OS020 (the top OS by attractiveness) among them — mostly OS whose use case and technology repeat one generic word ("Cloud Infrastructure Modernization × Cloud"). The median OS keeps 2 signals, none reaches `MARKET_SIGNAL_CAP` 56. The committed `radar.db` still holds the old links until `link` and scoring are re-run. |
 | Fallback scores are kept until someone re-runs | A refused write (§6.11) leaves yesterday's real score in place and exits non-zero, which is the right default but means the radar can hold a score older than its signals. `--rescue-fallback` re-scores the spaces still on a fallback; none of the 133 is on one in the committed database. |
 | Right-to-win never reads the signals | By design it judges the triple against the portfolio, but it means evidence cannot move it. |
 | Strategic relevance sees only the signal count | Not the titles; two OS with the same triple wording and count get the same prompt. |

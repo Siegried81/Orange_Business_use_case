@@ -9,7 +9,7 @@ How the scores are computed, why the code is built this way, and what is still o
 I built a pipeline that turns scattered external signals into scored, ranked opportunity spaces:
 
 - **Ingest**: pulls signals from 9 sources (Google News, NewsAPI.ai, GDELT, arXiv, Semantic Scholar, vendor blogs, Hacker News, EUR-Lex, TED), each isolated so one failing source never blocks the rest.
-- **Link**: attaches signals to the opportunity space they actually support, before any scoring happens.
+- **Link**: attaches signals to the opportunity space they actually support (a title must share at least 2 distinct keywords with the space's use case and technology, `radar_cli.py::MIN_KEYWORD_OVERLAP`), before any scoring happens.
 - **Score**: two independent axes — Attractiveness (market signal strength 30%, evidence quality 25%, source diversity 20%, strategic relevance 15%, novelty/momentum 10%) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to Cerebras, SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
 - **Promote**: recurring themes are promoted into new tracked Opportunity Spaces; a separate taxonomy-extension loop (watchlist → proposal → accepted/rejected) lets the underlying vocabulary grow over time.
 - **Visualize**: a Streamlit dashboard (polar radar + bubble view, role-based next actions) and a Power BI export for reporting.
@@ -48,7 +48,10 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
-│   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_foreign_keys.py      # foreign keys enforced, child tables repaired onto the live parent
+│   ├── test_network_guard.py     # the socket guard in conftest.py
+│   └── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
@@ -92,7 +95,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 136 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 143 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):

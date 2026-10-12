@@ -23,277 +23,277 @@ Raw signal counts by vertical_hint (quick sanity check)
 === What scoring.py actually sees per OS, via its linked signals (use this to set caps -- run `radar_cli.py link` first) ===
 OS       Vertical                       Linked signals   Distinct sources  
 ---------------------------------------------------------------------------
-OS001    Public Sector                  56               43                
-OS002    Manufacturing                  41               29                
-OS003    Finance & Insurance            22               21                
-OS004    Manufacturing                  44               34                
-OS005    Manufacturing                  29               23                
-OS006    Manufacturing                  16               11                
-OS007    Manufacturing                  37               25                
-OS008    Manufacturing                  8                6                 
-OS009    Finance & Insurance            31               16                
-OS010    Finance & Insurance            11               7                 
-OS011    Finance & Insurance            8                7                 
-OS012    Finance & Insurance            24               20                
-OS013    Public Sector                  56               42                
-OS014    Public Sector                  47               33                
-OS015    Public Sector                  32               29                
-OS016    Manufacturing                  22               18                
-OS017    Finance & Insurance            53               39                
-OS018    Finance & Insurance            22               17                
-OS019    Manufacturing                  30               27                
-OS020    Public Sector                  56               39                
-OS021    Energy                         29               13                
-OS022    Energy                         23               10                
-OS023    Public Sector                  56               43                
-OS024    Public Sector                  56               42                
-OS025    Retail                         35               26                
-OS026    Retail                         48               29                
-OS027    Healthcare                     26               12                
-OS028    Public Sector                  56               43                
-OS029    Manufacturing                  51               45                
-OS030    Manufacturing                  12               4                 
-OS031    Manufacturing                  9                4                 
-OS032    Public Sector                  27               24                
-OS033    Manufacturing                  46               38                
-OS034    Manufacturing                  47               27                
-OS035    Healthcare                     12               2                 
-OS036    Transportation and Logistics   33               25                
-OS037    Transportation and Logistics   7                6                 
-OS038    Finance & Insurance            45               35                
-OS039    Public Sector                  10               6                 
-OS040    Healthcare                     9                7                 
-OS041    Energy                         2                2                 
-OS042    Defense                        26               11                
-OS043    Automotive                     3                2                 
-OS044    Construction                   12               9                 
-OS045    Life Sciences                  27               12                
-OS046    Wholesale                      16               15                
-OS047    Media & Entertainment          14               4                 
-OS048    Natural Resources              2                1                 
-OS049    Aerospace & Defense            37               24                
-OS050    Fast Moving Consumer Goods     12               9                 
-OS051    IT and Services                39               23                
-OS054    Healthcare                     33               16                
-OS055    Retail                         26               12                
-OS056    Healthcare                     22               10                
-OS057    Automotive                     12               8                 
-OS058    Construction                   4                4                 
-OS059    Construction                   20               5                 
-OS060    Life Sciences                  10               7                 
-OS061    Media & Entertainment          28               12                
-OS062    Aerospace & Defense            16               9                 
-OS063    Automotive                     15               4                 
-OS064    Natural Resources              10               10                
-OS065    Energy                         52               23                
-OS066    Finance & Insurance            9                6                 
-OS067    Manufacturing                  5                5                 
-OS068    Healthcare                     16               5                 
-OS069    Defense                        23               8                 
-OS070    Life Sciences                  34               15                
-OS071    Fast Moving Consumer Goods     21               6                 
-OS072    IT and Services                15               10                
-OS073    Energy                         44               24                
-OS074    Defense                        22               8                 
-OS075    Defense                        37               13                
-OS076    Life Sciences                  25               10                
-OS077    Media & Entertainment          12               7                 
-OS078    Wholesale                      28               15                
-OS079    Wholesale                      9                5                 
-OS080    IT and Services                19               14                
-OS081    IT and Services                22               12                
-OS082    Finance & Insurance            52               38                
-OS083    Finance & Insurance            49               39                
-OS084    Public Sector                  17               14                
-OS085    Natural Resources              15               12                
-OS086    Manufacturing                  19               15                
-OS087    Public Sector                  56               43                
-OS088    Natural Resources              17               15                
-OS089    IT and Services                28               16                
-OS090    IT and Services                34               19                
-OS091    Public Sector                  11               10                
-OS092    Public Sector                  10               6                 
-OS093    Manufacturing                  56               36                
-OS094    Defense                        9                5                 
-OS095    Natural Resources              10               10                
-OS096    Life Sciences                  36               15                
-OS097    Manufacturing                  56               39                
-OS098    Life Sciences                  2                2                 
-OS099    Aerospace & Defense            26               11                
-OS100    Healthcare                     25               8                 
-OS101    Wholesale                      21               6                 
-OS102    Media & Entertainment          30               14                
-OS103    Aerospace & Defense            7                5                 
-OS104    Natural Resources              14               4                 
-OS105    Manufacturing                  34               18                
-OS106    Healthcare                     42               19                
-OS107    Transportation and Logistics   14               13                
-OS108    Energy                         56               24                
-OS109    Fast Moving Consumer Goods     16               5                 
-OS110    Media & Entertainment          24               10                
-OS111    Media & Entertainment          12               7                 
-OS112    Retail                         12               2                 
-OS113    Life Sciences                  13               3                 
-OS114    Fast Moving Consumer Goods     32               16                
-OS115    IT and Services                38               20                
-OS116    Wholesale                      13               3                 
-OS117    Natural Resources              3                3                 
-OS118    Manufacturing                  21               10                
-OS119    Transportation and Logistics   16               14                
-OS120    Wholesale                      22               6                 
-OS121    Retail                         30               23                
-OS122    Transportation and Logistics   11               6                 
-OS123    Construction                   15               11                
-OS124    Manufacturing                  22               18                
-OS125    Construction                   1                1                 
-OS126    Aerospace & Defense            6                6                 
-OS127    Automotive                     27               9                 
-OS128    Automotive                     9                5                 
-OS129    Media & Entertainment          12               9                 
-OS130    Aerospace & Defense            25               10                
-OS131    Natural Resources              7                4                 
-OS132    Finance & Insurance            19               9                 
-OS133    Life Sciences                  30               13                
-OS134    Public Sector                  56               38                
-OS135    Construction                   20               6                 
+OS001    Public Sector                  37               28                
+OS002    Manufacturing                  2                2                 
+OS003    Finance & Insurance            3                3                 
+OS004    Manufacturing                  0                0                 
+OS005    Manufacturing                  1                1                 
+OS006    Manufacturing                  3                3                 
+OS007    Manufacturing                  6                2                 
+OS008    Manufacturing                  0                0                 
+OS009    Finance & Insurance            4                4                 
+OS010    Finance & Insurance            2                2                 
+OS011    Finance & Insurance            1                1                 
+OS012    Finance & Insurance            2                2                 
+OS013    Public Sector                  18               17                
+OS014    Public Sector                  25               19                
+OS015    Public Sector                  3                3                 
+OS016    Manufacturing                  1                1                 
+OS017    Finance & Insurance            8                8                 
+OS018    Finance & Insurance            1                1                 
+OS019    Manufacturing                  5                5                 
+OS020    Public Sector                  0                0                 
+OS021    Energy                         2                1                 
+OS022    Energy                         2                1                 
+OS023    Public Sector                  5                5                 
+OS024    Public Sector                  19               18                
+OS025    Retail                         9                9                 
+OS026    Retail                         10               8                 
+OS027    Healthcare                     0                0                 
+OS028    Public Sector                  21               20                
+OS029    Manufacturing                  10               10                
+OS030    Manufacturing                  2                2                 
+OS031    Manufacturing                  1                1                 
+OS032    Public Sector                  1                1                 
+OS033    Manufacturing                  16               15                
+OS034    Manufacturing                  1                1                 
+OS035    Healthcare                     5                1                 
+OS036    Transportation and Logistics   6                6                 
+OS037    Transportation and Logistics   3                2                 
+OS038    Finance & Insurance            1                1                 
+OS039    Public Sector                  1                1                 
+OS040    Healthcare                     3                3                 
+OS041    Energy                         0                0                 
+OS042    Defense                        8                4                 
+OS043    Automotive                     0                0                 
+OS044    Construction                   3                3                 
+OS045    Life Sciences                  0                0                 
+OS046    Wholesale                      9                8                 
+OS047    Media & Entertainment          5                1                 
+OS048    Natural Resources              0                0                 
+OS049    Aerospace & Defense            14               9                 
+OS050    Fast Moving Consumer Goods     5                5                 
+OS051    IT and Services                3                3                 
+OS054    Healthcare                     5                5                 
+OS055    Retail                         1                1                 
+OS056    Healthcare                     2                2                 
+OS057    Automotive                     1                1                 
+OS058    Construction                   0                0                 
+OS059    Construction                   0                0                 
+OS060    Life Sciences                  1                1                 
+OS061    Media & Entertainment          1                1                 
+OS062    Aerospace & Defense            1                1                 
+OS063    Automotive                     5                1                 
+OS064    Natural Resources              2                2                 
+OS065    Energy                         4                4                 
+OS066    Finance & Insurance            2                2                 
+OS067    Manufacturing                  0                0                 
+OS068    Healthcare                     1                1                 
+OS069    Defense                        1                1                 
+OS070    Life Sciences                  7                6                 
+OS071    Fast Moving Consumer Goods     0                0                 
+OS072    IT and Services                0                0                 
+OS073    Energy                         5                4                 
+OS074    Defense                        1                1                 
+OS075    Defense                        6                2                 
+OS076    Life Sciences                  0                0                 
+OS077    Media & Entertainment          1                1                 
+OS078    Wholesale                      9                8                 
+OS079    Wholesale                      1                1                 
+OS080    IT and Services                2                2                 
+OS081    IT and Services                6                2                 
+OS082    Finance & Insurance            1                1                 
+OS083    Finance & Insurance            0                0                 
+OS084    Public Sector                  3                1                 
+OS085    Natural Resources              0                0                 
+OS086    Manufacturing                  0                0                 
+OS087    Public Sector                  2                2                 
+OS088    Natural Resources              3                3                 
+OS089    IT and Services                2                2                 
+OS090    IT and Services                3                3                 
+OS091    Public Sector                  0                0                 
+OS092    Public Sector                  1                1                 
+OS093    Manufacturing                  3                3                 
+OS094    Defense                        1                1                 
+OS095    Natural Resources              0                0                 
+OS096    Life Sciences                  3                3                 
+OS097    Manufacturing                  4                4                 
+OS098    Life Sciences                  1                1                 
+OS099    Aerospace & Defense            1                1                 
+OS100    Healthcare                     3                3                 
+OS101    Wholesale                      0                0                 
+OS102    Media & Entertainment          2                2                 
+OS103    Aerospace & Defense            0                0                 
+OS104    Natural Resources              5                1                 
+OS105    Manufacturing                  1                1                 
+OS106    Healthcare                     6                6                 
+OS107    Transportation and Logistics   7                7                 
+OS108    Energy                         4                4                 
+OS109    Fast Moving Consumer Goods     0                0                 
+OS110    Media & Entertainment          1                1                 
+OS111    Media & Entertainment          1                1                 
+OS112    Retail                         5                1                 
+OS113    Life Sciences                  5                1                 
+OS114    Fast Moving Consumer Goods     13               12                
+OS115    IT and Services                2                2                 
+OS116    Wholesale                      5                1                 
+OS117    Natural Resources              2                2                 
+OS118    Manufacturing                  0                0                 
+OS119    Transportation and Logistics   9                8                 
+OS120    Wholesale                      0                0                 
+OS121    Retail                         0                0                 
+OS122    Transportation and Logistics   1                1                 
+OS123    Construction                   2                2                 
+OS124    Manufacturing                  1                1                 
+OS125    Construction                   0                0                 
+OS126    Aerospace & Defense            0                0                 
+OS127    Automotive                     0                0                 
+OS128    Automotive                     0                0                 
+OS129    Media & Entertainment          0                0                 
+OS130    Aerospace & Defense            0                0                 
+OS131    Natural Resources              1                1                 
+OS132    Finance & Insurance            5                1                 
+OS133    Life Sciences                  2                2                 
+OS134    Public Sector                  6                4                 
+OS135    Construction                   0                0                 
 
-Across 133 OS: signal count min=1 max=56 avg=25.0  |  distinct sources min=1 max=45 avg=15.4
+Across 133 OS: signal count min=0 max=37 avg=3.5  |  distinct sources min=0 max=28 avg=2.9
 Set MARKET_SIGNAL_CAP near the high end of the linked-signal-count range (not the average -- a cap at the average would already saturate half the OS at 10/10) and SOURCE_DIVERSITY_CAP the same way, using distinct sources.
 
-=== Signals with keyword overlap > 0, per OS, BEFORE link's top_n cutoff (current top_n=56) ===
-OS001    Public Sector                  101               <-- exceeds current top_n=56, signals ARE being cut
-OS002    Manufacturing                  41              
-OS003    Finance & Insurance            22              
-OS004    Manufacturing                  44              
-OS005    Manufacturing                  29              
-OS006    Manufacturing                  16              
-OS007    Manufacturing                  37              
-OS008    Manufacturing                  8               
-OS009    Finance & Insurance            31              
-OS010    Finance & Insurance            11              
-OS011    Finance & Insurance            8               
-OS012    Finance & Insurance            24              
-OS013    Public Sector                  94                <-- exceeds current top_n=56, signals ARE being cut
-OS014    Public Sector                  47              
-OS015    Public Sector                  32              
-OS016    Manufacturing                  22              
-OS017    Finance & Insurance            53              
-OS018    Finance & Insurance            22              
-OS019    Manufacturing                  30              
-OS020    Public Sector                  67                <-- exceeds current top_n=56, signals ARE being cut
-OS021    Energy                         29              
-OS022    Energy                         23              
-OS023    Public Sector                  77                <-- exceeds current top_n=56, signals ARE being cut
-OS024    Public Sector                  99                <-- exceeds current top_n=56, signals ARE being cut
-OS025    Retail                         35              
-OS026    Retail                         48              
-OS027    Healthcare                     26              
-OS028    Public Sector                  109               <-- exceeds current top_n=56, signals ARE being cut
-OS029    Manufacturing                  51              
-OS030    Manufacturing                  12              
-OS031    Manufacturing                  9               
-OS032    Public Sector                  27              
-OS033    Manufacturing                  46              
-OS034    Manufacturing                  47              
-OS035    Healthcare                     12              
-OS036    Transportation and Logistics   33              
-OS037    Transportation and Logistics   7               
-OS038    Finance & Insurance            45              
-OS039    Public Sector                  10              
-OS040    Healthcare                     9               
-OS041    Energy                         2               
-OS042    Defense                        26              
-OS043    Automotive                     3               
-OS044    Construction                   12              
-OS045    Life Sciences                  27              
-OS046    Wholesale                      16              
-OS047    Media & Entertainment          14              
-OS048    Natural Resources              2               
-OS049    Aerospace & Defense            37              
-OS050    Fast Moving Consumer Goods     12              
-OS051    IT and Services                39              
-OS054    Healthcare                     33              
-OS055    Retail                         26              
-OS056    Healthcare                     22              
-OS057    Automotive                     12              
-OS058    Construction                   4               
-OS059    Construction                   20              
-OS060    Life Sciences                  10              
-OS061    Media & Entertainment          28              
-OS062    Aerospace & Defense            16              
-OS063    Automotive                     15              
-OS064    Natural Resources              10              
-OS065    Energy                         52              
-OS066    Finance & Insurance            9               
-OS067    Manufacturing                  5               
-OS068    Healthcare                     16              
-OS069    Defense                        23              
-OS070    Life Sciences                  34              
-OS071    Fast Moving Consumer Goods     21              
-OS072    IT and Services                15              
-OS073    Energy                         44              
-OS074    Defense                        22              
-OS075    Defense                        37              
-OS076    Life Sciences                  25              
-OS077    Media & Entertainment          12              
-OS078    Wholesale                      28              
-OS079    Wholesale                      9               
-OS080    IT and Services                19              
-OS081    IT and Services                22              
-OS082    Finance & Insurance            52              
-OS083    Finance & Insurance            49              
-OS084    Public Sector                  17              
-OS085    Natural Resources              15              
-OS086    Manufacturing                  19              
-OS087    Public Sector                  57                <-- exceeds current top_n=56, signals ARE being cut
-OS088    Natural Resources              17              
-OS089    IT and Services                28              
-OS090    IT and Services                34              
-OS091    Public Sector                  11              
-OS092    Public Sector                  10              
-OS093    Manufacturing                  56              
-OS094    Defense                        9               
-OS095    Natural Resources              10              
-OS096    Life Sciences                  36              
-OS097    Manufacturing                  58                <-- exceeds current top_n=56, signals ARE being cut
-OS098    Life Sciences                  2               
-OS099    Aerospace & Defense            26              
-OS100    Healthcare                     25              
-OS101    Wholesale                      21              
-OS102    Media & Entertainment          30              
-OS103    Aerospace & Defense            7               
-OS104    Natural Resources              14              
-OS105    Manufacturing                  34              
-OS106    Healthcare                     42              
-OS107    Transportation and Logistics   14              
-OS108    Energy                         57                <-- exceeds current top_n=56, signals ARE being cut
-OS109    Fast Moving Consumer Goods     16              
-OS110    Media & Entertainment          24              
-OS111    Media & Entertainment          12              
-OS112    Retail                         12              
-OS113    Life Sciences                  13              
-OS114    Fast Moving Consumer Goods     32              
-OS115    IT and Services                38              
-OS116    Wholesale                      13              
-OS117    Natural Resources              3               
-OS118    Manufacturing                  21              
-OS119    Transportation and Logistics   16              
-OS120    Wholesale                      22              
-OS121    Retail                         30              
-OS122    Transportation and Logistics   11              
-OS123    Construction                   15              
-OS124    Manufacturing                  22              
-OS125    Construction                   1               
-OS126    Aerospace & Defense            6               
-OS127    Automotive                     27              
-OS128    Automotive                     9               
-OS129    Media & Entertainment          12              
-OS130    Aerospace & Defense            25              
-OS131    Natural Resources              7               
-OS132    Finance & Insurance            19              
-OS133    Life Sciences                  30              
-OS134    Public Sector                  64                <-- exceeds current top_n=56, signals ARE being cut
-OS135    Construction                   20              
+=== Signals sharing >= 2 keywords, per OS, BEFORE link's top_n cutoff (current top_n=56) ===
+OS001    Public Sector                  37              
+OS002    Manufacturing                  2               
+OS003    Finance & Insurance            3               
+OS004    Manufacturing                  0               
+OS005    Manufacturing                  1               
+OS006    Manufacturing                  3               
+OS007    Manufacturing                  6               
+OS008    Manufacturing                  0               
+OS009    Finance & Insurance            4               
+OS010    Finance & Insurance            2               
+OS011    Finance & Insurance            1               
+OS012    Finance & Insurance            2               
+OS013    Public Sector                  18              
+OS014    Public Sector                  25              
+OS015    Public Sector                  3               
+OS016    Manufacturing                  1               
+OS017    Finance & Insurance            8               
+OS018    Finance & Insurance            1               
+OS019    Manufacturing                  5               
+OS020    Public Sector                  0               
+OS021    Energy                         2               
+OS022    Energy                         2               
+OS023    Public Sector                  5               
+OS024    Public Sector                  19              
+OS025    Retail                         9               
+OS026    Retail                         10              
+OS027    Healthcare                     0               
+OS028    Public Sector                  21              
+OS029    Manufacturing                  10              
+OS030    Manufacturing                  2               
+OS031    Manufacturing                  1               
+OS032    Public Sector                  1               
+OS033    Manufacturing                  16              
+OS034    Manufacturing                  1               
+OS035    Healthcare                     5               
+OS036    Transportation and Logistics   6               
+OS037    Transportation and Logistics   3               
+OS038    Finance & Insurance            1               
+OS039    Public Sector                  1               
+OS040    Healthcare                     3               
+OS041    Energy                         0               
+OS042    Defense                        8               
+OS043    Automotive                     0               
+OS044    Construction                   3               
+OS045    Life Sciences                  0               
+OS046    Wholesale                      9               
+OS047    Media & Entertainment          5               
+OS048    Natural Resources              0               
+OS049    Aerospace & Defense            14              
+OS050    Fast Moving Consumer Goods     5               
+OS051    IT and Services                3               
+OS054    Healthcare                     5               
+OS055    Retail                         1               
+OS056    Healthcare                     2               
+OS057    Automotive                     1               
+OS058    Construction                   0               
+OS059    Construction                   0               
+OS060    Life Sciences                  1               
+OS061    Media & Entertainment          1               
+OS062    Aerospace & Defense            1               
+OS063    Automotive                     5               
+OS064    Natural Resources              2               
+OS065    Energy                         4               
+OS066    Finance & Insurance            2               
+OS067    Manufacturing                  0               
+OS068    Healthcare                     1               
+OS069    Defense                        1               
+OS070    Life Sciences                  7               
+OS071    Fast Moving Consumer Goods     0               
+OS072    IT and Services                0               
+OS073    Energy                         5               
+OS074    Defense                        1               
+OS075    Defense                        6               
+OS076    Life Sciences                  0               
+OS077    Media & Entertainment          1               
+OS078    Wholesale                      9               
+OS079    Wholesale                      1               
+OS080    IT and Services                2               
+OS081    IT and Services                6               
+OS082    Finance & Insurance            1               
+OS083    Finance & Insurance            0               
+OS084    Public Sector                  3               
+OS085    Natural Resources              0               
+OS086    Manufacturing                  0               
+OS087    Public Sector                  2               
+OS088    Natural Resources              3               
+OS089    IT and Services                2               
+OS090    IT and Services                3               
+OS091    Public Sector                  0               
+OS092    Public Sector                  1               
+OS093    Manufacturing                  3               
+OS094    Defense                        1               
+OS095    Natural Resources              0               
+OS096    Life Sciences                  3               
+OS097    Manufacturing                  4               
+OS098    Life Sciences                  1               
+OS099    Aerospace & Defense            1               
+OS100    Healthcare                     3               
+OS101    Wholesale                      0               
+OS102    Media & Entertainment          2               
+OS103    Aerospace & Defense            0               
+OS104    Natural Resources              5               
+OS105    Manufacturing                  1               
+OS106    Healthcare                     6               
+OS107    Transportation and Logistics   7               
+OS108    Energy                         4               
+OS109    Fast Moving Consumer Goods     0               
+OS110    Media & Entertainment          1               
+OS111    Media & Entertainment          1               
+OS112    Retail                         5               
+OS113    Life Sciences                  5               
+OS114    Fast Moving Consumer Goods     13              
+OS115    IT and Services                2               
+OS116    Wholesale                      5               
+OS117    Natural Resources              2               
+OS118    Manufacturing                  0               
+OS119    Transportation and Logistics   9               
+OS120    Wholesale                      0               
+OS121    Retail                         0               
+OS122    Transportation and Logistics   1               
+OS123    Construction                   2               
+OS124    Manufacturing                  1               
+OS125    Construction                   0               
+OS126    Aerospace & Defense            0               
+OS127    Automotive                     0               
+OS128    Automotive                     0               
+OS129    Media & Entertainment          0               
+OS130    Aerospace & Defense            0               
+OS131    Natural Resources              1               
+OS132    Finance & Insurance            5               
+OS133    Life Sciences                  2               
+OS134    Public Sector                  6               
+OS135    Construction                   0               
 
-Across 133 OS: median=22  90th percentile=52  max=109  |  10 OS (8%) exceed the current top_n=56 and are having relevant signals cut.
+Across 133 OS: median=2  90th percentile=9  max=37  |  0 OS (0%) exceed the current top_n=56 and are having relevant signals cut.
 A defensible top_n covers most real OS without keeping near-irrelevant, low-overlap signals just to hit a round number -- e.g. the 90th percentile above, not a guess.
