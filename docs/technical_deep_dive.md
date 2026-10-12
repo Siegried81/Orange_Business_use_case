@@ -61,7 +61,7 @@ State of the current database:
 | Recurring themes tracked / promoted | 263 / 124 |
 | Watchlist terms / proposals | 235 / 8 (all rejected) |
 | Right-to-win levels | L0 12, L1 72, L2 1, L3 48, L4 0 |
-| Quadrants (strong / needs capability / moderate / low) | 6 / 2 / 85 / 40 |
+| Quadrants (strong / needs capability / moderate / low / insufficient evidence) | 6 / 2 / 62 / 31 / 32 |
 
 ---
 
@@ -202,7 +202,14 @@ inclusive, shared by the overview counts and the detail panel:
 | **Attractiveness ≥ 7** | strong | needs capability |
 | **Attractiveness < 7** | moderate market | low on both |
 
-A missing score yields no quadrant rather than "low".
+A missing score yields no quadrant rather than "low". An OS with no linked
+signal is put in a fifth category, **insufficient evidence**, before the
+grid is read: its attractiveness is computed on nothing, so a near-zero
+score there says the radar found no article, not that the market is weak.
+On the current radar.db that is 32 OS, 23 of which the grid alone would
+call "moderate market" and 9 "low on both". The Power BI model applies the
+same rule (`Insufficient Evidence`) from the `linked_signals` column of
+`latest_scores.csv`.
 
 ---
 
@@ -285,7 +292,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-187 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
+191 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -294,9 +301,9 @@ reaching the internet.
 | File | Tests | Covers |
 |---|---|---|
 | `tests/test_LLM.py` | 43 | Malformed LLM output across `analyze`, `scoring`, `extend_taxonomy`; generic-term filter; key rotation; non-numeric scores ("high") coerced to a marked neutral instead of raising; `portfolio_distance` validated against L0–L4; the network block itself. |
-| `tests/test_export_powerbi.py` | 17 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB. |
-| `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
-| `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
+| `tests/test_export_powerbi.py` | 19 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB, the linked-signal count and the model's Insufficient Evidence quadrant. |
+| `tests/test_scoring_and_db.py` | 55 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants (including insufficient evidence), summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
+| `tests/test_dashboard.py` | 15 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, the not-enough-evidence count in the overview, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
 | `tests/test_score_history.py` | 8 | Score history: every accepted write appended while `scores` keeps one row, a refused fallback leaves no trace, right-to-win history, the one-time baseline, history surviving a deleted OS, `init_db()` on a new database, and latest-score reads unchanged on a copy of the committed `radar.db`. |
 | `tests/test_taxonomy_threshold.py` | 5 | One proposal threshold: both defaults read `TAXONOMY_PROPOSAL_THRESHOLD`, a call without a threshold proposes the same terms as the pipeline, an explicit threshold still wins. |
 | `tests/test_foreign_keys.py` | 4 | The replayed migration that left child tables pointing at a dropped parent, the repair, foreign keys on every connection, no violation left in a copy of `radar.db`. |

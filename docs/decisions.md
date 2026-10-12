@@ -378,3 +378,23 @@ revisit it. Append only — never rewrite a past entry.
 - **Revisit if:** the 32 OS without a link matter (see the link entry), or
   OS106's evidence call starts answering in schema -- `python -m
   pipeline.scoring --force --from=OS106 --to=OS106`.
+
+## 2026-10-12 — No linked signal is "insufficient evidence", not "low"
+
+- **What:** `pipeline/config.py::quadrant()` takes an optional
+  `linked_signals`; zero returns `insufficient_evidence` before the
+  attractiveness x right-to-win grid is read. The dashboard (overview counts
+  and detail panel) passes the count; `scripts/export_powerbi.py` writes a
+  `linked_signals` column to `latest_scores.csv` and the Power BI model's
+  `Quadrant` column returns `Insufficient Evidence` on zero.
+- **Why:** under the 2-keyword link rule 32 OS have no linked signal. Their
+  attractiveness is computed on nothing and lands near zero, which the grid
+  reported as a market verdict. In the hand-labelled sample the 2-keyword
+  rule had 3 of 40 links off-topic against 31 of 80 under one keyword, so the
+  missing links are the price of fewer wrong ones, and the page now says so.
+- **Changes the numbers:** quadrant counts only; no score changes.
+  strong/needs capability/moderate/low 6/2/85/40 -> 6/2/62/31, plus 32
+  insufficient evidence (23 from moderate market, 9 from low on both).
+- **Revisit if:** a looser link for these 32 OS is measured to stay precise,
+  or new signals give them links -- they leave the category on the next
+  `link` + scoring run without any code change.
