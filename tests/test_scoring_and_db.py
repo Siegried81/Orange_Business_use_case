@@ -506,6 +506,20 @@ class TestQuadrant:
         assert quadrant(None, 5) is None
         assert quadrant(8, float("nan")) is None
 
+    def test_no_linked_signal_is_insufficient_evidence_not_low(self):
+        # Under the 2-keyword link rule 32 OS have no signal at all; their
+        # attractiveness is computed on nothing, which is not a market verdict.
+        from pipeline.config import QUADRANTS, quadrant
+
+        assert "insufficient_evidence" in QUADRANTS
+        assert quadrant(0.2, 8.0, linked_signals=0) == "insufficient_evidence"
+        assert quadrant(9.0, 9.0, linked_signals=0) == "insufficient_evidence"
+        assert quadrant(0.2, 8.0, linked_signals=1) == "moderate_market"
+        # Unknown count: the rule is not applied, so older callers are unchanged.
+        assert quadrant(0.2, 8.0) == "moderate_market"
+        # A missing score still yields no quadrant at all.
+        assert quadrant(None, 8.0, linked_signals=0) is None
+
 
 class TestSummaryHeader:
     """The --top cut must not make scored opportunity spaces look unscored."""

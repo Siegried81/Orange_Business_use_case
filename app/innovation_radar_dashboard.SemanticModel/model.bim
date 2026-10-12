@@ -1176,7 +1176,7 @@
               }
             ],
             "dataType": "string",
-            "description": "Attractiveness x Right-to-win quadrant, same rule as pipeline/config.py quadrant() (threshold 7, >= is high).",
+            "description": "Attractiveness x Right-to-win quadrant, same rule as pipeline/config.py quadrant() (threshold 7, >= is high); Insufficient Evidence when no signal is linked.",
             "lineageTag": "20db6a3a-92e1-4408-a32d-8a88cf305b89",
             "sortByColumn": "Quadrant Order",
             "sourceColumn": "Quadrant",
@@ -1194,6 +1194,14 @@
             "isHidden": true,
             "lineageTag": "ef292a9f-c4ab-4fce-bffd-4533cc4b1933",
             "sourceColumn": "Quadrant Order",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "Linked Signals",
+            "dataType": "int64",
+            "description": "Number of signals linked to the opportunity space. Zero puts it in the Insufficient Evidence quadrant.",
+            "lineageTag": "7d1e4f0a-3b52-4c9e-9a61-2f8b5c0d4e17",
+            "sourceColumn": "linked_signals",
             "summarizeBy": "none"
           }
         ],
@@ -1397,9 +1405,9 @@
                 "    Source = Csv.Document(File.Contents(DataFolder & \"latest_scores.csv\"), [Delimiter = \",\", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),",
                 "    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),",
                 "    Blanks = Table.TransformColumns(Promoted, {}, each if _ = \"\" then null else _),",
-                "    Typed = Table.TransformColumnTypes(Blanks, {{\"id\", Int64.Type}, {\"opportunity_space_id\", Int64.Type}, {\"market_signal_strength\", type number}, {\"source_diversity\", type number}, {\"evidence_quality\", type number}, {\"evidence_quality_justification\", type text}, {\"novelty_momentum\", type number}, {\"strategic_relevance\", type number}, {\"strategic_relevance_justification\", type text}, {\"urgency_score\", type number}, {\"total_score\", type number}, {\"computed_at\", type datetime}, {\"right_to_win_id\", Int64.Type}, {\"portfolio_distance\", type text}, {\"right_to_win_score\", type number}, {\"matched_assets\", type text}, {\"justification\", type text}, {\"right_to_win_computed_at\", type datetime}}, \"en-US\"),",
-                "    Quadrant = Table.AddColumn(Typed, \"Quadrant\", each let a = [total_score], r = [right_to_win_score], t = 7 in if a = null or r = null then null else if a >= t and r >= t then \"Quick Win\" else if a >= t then \"Strategic Bet\" else if r >= t then \"Safe but not Hot\" else \"Deprioritize\", type text),",
-                "    #\"Quadrant Order\" = Table.AddColumn(Quadrant, \"Quadrant Order\", each if [Quadrant] = \"Quick Win\" then 1 else if [Quadrant] = \"Strategic Bet\" then 2 else if [Quadrant] = \"Safe but not Hot\" then 3 else if [Quadrant] = \"Deprioritize\" then 4 else 5, Int64.Type)",
+                "    Typed = Table.TransformColumnTypes(Blanks, {{\"id\", Int64.Type}, {\"opportunity_space_id\", Int64.Type}, {\"market_signal_strength\", type number}, {\"source_diversity\", type number}, {\"evidence_quality\", type number}, {\"evidence_quality_justification\", type text}, {\"novelty_momentum\", type number}, {\"strategic_relevance\", type number}, {\"strategic_relevance_justification\", type text}, {\"urgency_score\", type number}, {\"total_score\", type number}, {\"computed_at\", type datetime}, {\"right_to_win_id\", Int64.Type}, {\"portfolio_distance\", type text}, {\"right_to_win_score\", type number}, {\"matched_assets\", type text}, {\"justification\", type text}, {\"right_to_win_computed_at\", type datetime}, {\"linked_signals\", Int64.Type}}, \"en-US\"),",
+                "    Quadrant = Table.AddColumn(Typed, \"Quadrant\", each let a = [total_score], r = [right_to_win_score], t = 7 in if a = null or r = null then null else if [linked_signals] = 0 then \"Insufficient Evidence\" else if a >= t and r >= t then \"Quick Win\" else if a >= t then \"Strategic Bet\" else if r >= t then \"Safe but not Hot\" else \"Deprioritize\", type text),",
+                "    #\"Quadrant Order\" = Table.AddColumn(Quadrant, \"Quadrant Order\", each if [Quadrant] = \"Quick Win\" then 1 else if [Quadrant] = \"Strategic Bet\" then 2 else if [Quadrant] = \"Safe but not Hot\" then 3 else if [Quadrant] = \"Deprioritize\" then 4 else if [Quadrant] = \"Insufficient Evidence\" then 5 else 6, Int64.Type)",
                 "in",
                 "    #\"Quadrant Order\""
               ],

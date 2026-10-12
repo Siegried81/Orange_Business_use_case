@@ -148,6 +148,10 @@ class TestTabsHoldTheirOwnContent:
         for tab in ("tab_score", "tab_evidence", "tab_signals"):
             assert source.count(f"with {tab}:") == 1, f"{tab} is opened more than once"
 
+    def test_overview_counts_the_spaces_with_no_evidence(self, ran_app):
+        captions = " ".join(str(c.value) for c in ran_app.caption)
+        assert "Not enough evidence:" in captions
+
     def test_strategic_position_is_rendered(self, ran_app):
         markdown = " ".join(str(m.value) for m in ran_app.markdown)
         assert "Strategic position" in markdown

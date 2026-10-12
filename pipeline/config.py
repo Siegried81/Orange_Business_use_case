@@ -561,21 +561,33 @@ CANDIDATES = [
 # panel both go through quadrant() below, so they cannot disagree.
 STRONG_THRESHOLD = 7
 
-QUADRANTS = ("strong", "needs_capability", "moderate_market", "low_both")
+QUADRANTS = (
+    "strong", "needs_capability", "moderate_market", "low_both",
+    "insufficient_evidence",
+)
 
 
-def quadrant(attractiveness, right_to_win, threshold=STRONG_THRESHOLD):
+def quadrant(attractiveness, right_to_win, threshold=STRONG_THRESHOLD,
+             linked_signals=None):
     """Return the QUADRANTS key for one opportunity space, or None if either
     score is missing.
 
     Every (attractiveness, right_to_win) pair lands in exactly one quadrant:
     each axis is split once at the same threshold (>= is "high"). Missing is
     not zero -- an unscored axis returns None instead of counting as "low".
+
+    `linked_signals == 0` returns "insufficient_evidence" whatever the
+    scores: with no linked signal, attractiveness is computed on nothing and
+    lands near zero, which reads as a verdict on the market when it only
+    says the radar found no article matching two of the OS keywords.
+    None (the default) means the count is unknown and is not checked.
     """
     if attractiveness is None or right_to_win is None:
         return None
     if attractiveness != attractiveness or right_to_win != right_to_win:  # NaN
         return None
+    if linked_signals == 0:
+        return "insufficient_evidence"
     high_attr = attractiveness >= threshold
     high_rtw = right_to_win >= threshold
     if high_attr and high_rtw:
