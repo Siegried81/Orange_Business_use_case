@@ -10,7 +10,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 
 - **Ingest**: pulls signals from 9 sources (Google News, NewsAPI.ai, GDELT, arXiv, Semantic Scholar, vendor blogs, Hacker News, EUR-Lex, TED), each isolated so one failing source never blocks the rest.
 - **Link**: attaches signals to the opportunity space they actually support (a title must share at least 2 distinct keywords with the space's use case and technology, `radar_cli.py::MIN_KEYWORD_OVERLAP`), before any scoring happens.
-- **Score**: two independent axes — Attractiveness (market signal strength 30%, evidence quality 25%, source diversity 20%, strategic relevance 15%, novelty/momentum 10%) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to Cerebras, SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
+- **Score**: two independent axes — Attractiveness (market signal strength 39.7%, evidence quality 27.8%, source diversity 14.1%, strategic relevance 13.0%, novelty/momentum 5.5% — the AHP priority vector of `pipeline/ahp_weights.xlsx`, consistency ratio 0.021; the hand-set 30/25/20/15/10 remains as `--weights=manual`) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to Cerebras, SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
 - **Promote**: recurring themes are promoted into new tracked Opportunity Spaces; a separate taxonomy-extension loop (watchlist → proposal → accepted/rejected) lets the underlying vocabulary grow over time.
 - **Visualize**: a Streamlit dashboard (polar radar + bubble view, role-based next actions) and a Power BI export for reporting.
 
@@ -23,6 +23,8 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── ingest.py                # per-source connectors + safe_run() isolation
 │   ├── analyze.py               # theme/OS extraction from raw signals
 │   ├── scoring.py               # attractiveness + right-to-win scoring, LLM calls
+│   ├── ahp.py                   # AHP weights + consistency ratio from ahp_weights.xlsx
+│   ├── ahp_weights.xlsx         # AHP pairwise comparisons of the five attractiveness sub-scores
 │   ├── taxonomy_validation.py   # generic-term filtering
 │   ├── extend_taxonomy.py       # watchlist -> proposal workflow
 │   ├── theme_promotion.py       # tracks valid themes across runs, feeds promote
@@ -53,7 +55,8 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
 │   ├── test_foreign_keys.py      # foreign keys enforced, child tables repaired onto the live parent
 │   ├── test_network_guard.py     # the socket guard in conftest.py
-│   └── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
+│   ├── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
+│   └── test_ahp_weights.py       # AHP weights, consistency ratio, manual option
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
@@ -92,12 +95,13 @@ python radar_cli.py create         # register seed opportunity spaces
 python radar_cli.py promote        # register recurring themes
 python radar_cli.py link           # attach signals to each opportunity space
 python -m pipeline.scoring         # score (LLM); --refresh recomputes the deterministic sub-scores only
+                                   # --weights=manual uses the hand-set 30/20/25/10/15 instead of the AHP weights
                                    # exits non-zero if no LLM provider answered: the previous real scores are kept, not overwritten
 python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitting on a neutral fallback
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 156 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 166 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
