@@ -30,16 +30,47 @@ from pipeline.config import (
     TED_LOOKBACK_DAYS,
 )
 from llm.llm_client import get_llm_json
+from pipeline.ahp import ahp_weights
 
-WEIGHTS = {
+# Two named weightings of the five attractiveness sub-scores. "manual" is the
+# hand-set 30/20/25/10/15 the radar started with; "ahp" is the priority vector
+# of the pairwise judgments in pipeline/ahp_weights.xlsx, computed by
+# pipeline/ahp.py, which refuses judgments with a consistency ratio >= 0.10.
+# WEIGHTING picks the default; `python -m pipeline.scoring --weights=manual`
+# overrides it for one run.
+MANUAL_WEIGHTS = {
     "market_signal_strength": 0.3,
     "source_diversity": 0.2,
     "evidence_quality": 0.25,
     "novelty_momentum": 0.1,
     "strategic_relevance": 0.15,
 }
-MARKET_SIGNAL_CAP = 56
-SOURCE_DIVERSITY_CAP = 40
+WEIGHTING = "ahp"
+
+
+def attractiveness_weights(name=WEIGHTING):
+    """Return the named weighting as {sub_score: weight}, summing to 1."""
+    if name == "manual":
+        return dict(MANUAL_WEIGHTS)
+    if name == "ahp":
+        weights, _ = ahp_weights()
+        if set(weights) != set(MANUAL_WEIGHTS):
+            raise ValueError(
+                f"AHP sheet criteria {sorted(weights)} do not match the sub-scores {sorted(MANUAL_WEIGHTS)}"
+            )
+        return weights
+    raise ValueError(f"Unknown weighting {name!r}: use 'ahp' or 'manual'")
+
+
+WEIGHTS = attractiveness_weights()
+# Counts at which market signal strength and source diversity reach 10.
+# They depend on how many signals `link` keeps per OS, so they are derived
+# from the link volume by scripts/derive_caps.py: each cap keeps the
+# percentile the one-keyword caps (56, 40) held under the one-keyword rule,
+# taken in the distribution of the current two-keyword rule. Re-run it
+# whenever the link rule or top_n changes.
+MARKET_SIGNAL_CAP = 15
+SOURCE_DIVERSITY_CAP = 10
 EVIDENCE_QUALITY_MAX_SIGNALS = 15
 ENRICHMENT_SAMPLE_SIZE = 10
 
@@ -266,9 +297,29 @@ def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
     return (score, justification)
 
 
-def crm_customer_overlap_bonus(vertical) -> float:
-    count = sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
-    return min(1.0, count * 0.5)
+# Right-to-win bonus per named customer reference (config.CUSTOMER_REFERENCES)
+# in the OS's vertical, and its cap. Both are judgment, not fitted: the radar
+# has no won/lost record to fit them against. How many OS would change with
+# another value is re-derived from radar.db by scripts/rtw_bonus_sensitivity.py
+# (table in docs/technical_deep_dive.md §2.2). The same references are also in
+# the right-to-win prompt, so the LLM may already have counted them once.
+CUSTOMER_REFERENCE_BONUS = 0.5
+CUSTOMER_REFERENCE_BONUS_CAP = 1.0
+
+
+def customer_reference_count(vertical) -> int:
+    return sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
+
+
+def customer_reference_bonus(vertical, per_reference=None, cap=None) -> float:
+    """Right-to-win bonus for the vertical's named customer references, capped.
+
+    `per_reference` and `cap` default to the module constants at call time,
+    so a sensitivity run can pass other values without touching them.
+    """
+    per_reference = CUSTOMER_REFERENCE_BONUS if per_reference is None else per_reference
+    cap = CUSTOMER_REFERENCE_BONUS_CAP if cap is None else cap
+    return min(cap, customer_reference_count(vertical) * per_reference)
 
 
 def llm_right_to_win(vertical, use_case, technology):
@@ -303,10 +354,15 @@ def llm_right_to_win(vertical, use_case, technology):
         )
         distance = "L4"
     assets = ", ".join(result.get("matched_assets", []))
-    crm_bonus = crm_customer_overlap_bonus(vertical)
-    if crm_bonus:
-        score = min(10.0, score + crm_bonus)
-        justification += f" +{crm_bonus:.1f} calibration bonus (CRM customer overlap)."
+    reference_bonus = customer_reference_bonus(vertical)
+    if reference_bonus:
+        score = min(10.0, score + reference_bonus)
+        # scripts/rtw_bonus_sensitivity.py reads the bonus back from
+        # "+<value> calibration bonus": keep that phrase.
+        justification += (
+            f" +{reference_bonus:.2f} calibration bonus "
+            f"({customer_reference_count(vertical)} named customer reference(s) in {vertical})."
+        )
     return (distance, score, assets, justification)
 
 
@@ -816,6 +872,12 @@ if __name__ == "__main__":
             from_label = arg.split("=", 1)[1]
         elif arg.startswith("--to="):
             to_label = arg.split("=", 1)[1]
+        elif arg.startswith("--weights="):
+            WEIGHTS = attractiveness_weights(arg.split("=", 1)[1])
+    print(
+        "Attractiveness weights: "
+        + ", ".join(f"{k} {v:.1%}" for k, v in WEIGHTS.items())
+    )
     if "--refresh" in sys.argv:
         recalibrate_deterministic_scores()
     elif "--recalibrate-urgency" in sys.argv:

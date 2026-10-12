@@ -9,8 +9,8 @@ How the scores are computed, why the code is built this way, and what is still o
 I built a pipeline that turns scattered external signals into scored, ranked opportunity spaces:
 
 - **Ingest**: pulls signals from 9 sources (Google News, NewsAPI.ai, GDELT, arXiv, Semantic Scholar, vendor blogs, Hacker News, EUR-Lex, TED), each isolated so one failing source never blocks the rest.
-- **Link**: attaches signals to the opportunity space they actually support, before any scoring happens.
-- **Score**: two independent axes — Attractiveness (market signal strength 30%, evidence quality 25%, source diversity 20%, strategic relevance 15%, novelty/momentum 10%) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to Cerebras, SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
+- **Link**: attaches signals to the opportunity space they actually support (a title must share at least 2 distinct keywords with the space's use case and technology, `radar_cli.py::MIN_KEYWORD_OVERLAP`), before any scoring happens.
+- **Score**: two independent axes — Attractiveness (market signal strength 39.7%, evidence quality 27.8%, source diversity 14.1%, strategic relevance 13.0%, novelty/momentum 5.5% — the AHP priority vector of `pipeline/ahp_weights.xlsx`, consistency ratio 0.021; the hand-set 30/25/20/15/10 remains as `--weights=manual`) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
 - **Promote**: recurring themes are promoted into new tracked Opportunity Spaces; a separate taxonomy-extension loop (watchlist → proposal → accepted/rejected) lets the underlying vocabulary grow over time.
 - **Visualize**: a Streamlit dashboard (polar radar + bubble view, role-based next actions) and a Power BI export for reporting.
 
@@ -23,6 +23,8 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── ingest.py                # per-source connectors + safe_run() isolation
 │   ├── analyze.py               # theme/OS extraction from raw signals
 │   ├── scoring.py               # attractiveness + right-to-win scoring, LLM calls
+│   ├── ahp.py                   # AHP weights + consistency ratio from ahp_weights.xlsx
+│   ├── ahp_weights.xlsx         # AHP pairwise comparisons of the five attractiveness sub-scores
 │   ├── taxonomy_validation.py   # generic-term filtering
 │   ├── extend_taxonomy.py       # watchlist -> proposal workflow
 │   ├── theme_promotion.py       # tracks valid themes across runs, feeds promote
@@ -30,7 +32,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── signals_discovery.py     # older copy of theme tracking, used by radar_cli_top_15.py
 │   └── db.py                    # SQLite access layer (radar.db)
 ├── llm/
-│   └── llm_client.py            # provider-agnostic LLM client (Groq -> Cerebras -> SambaNova -> Ollama)
+│   └── llm_client.py            # provider-agnostic LLM client (Groq -> SambaNova -> Ollama)
 ├── app/
 │   ├── streamlit_app.py         # interactive dashboard
 │   ├── innovation_radar_dashboard.pbip  # Power BI project (open this one)
@@ -49,11 +51,21 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
 │   ├── test_score_history.py     # every score write kept in the history tables, current reads unchanged
-│   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_taxonomy_threshold.py # one taxonomy proposal threshold for every entry point
+│   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_foreign_keys.py      # foreign keys enforced, child tables repaired onto the live parent
+│   ├── test_network_guard.py     # the socket guard in conftest.py
+│   ├── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
+│   ├── test_ahp_weights.py       # AHP weights, consistency ratio, manual option
+│   ├── test_rtw_bonus.py         # right-to-win customer-reference bonus and its sensitivity
+│   ├── test_derive_caps.py       # market/diversity caps derived from the link volume
+│   └── test_llm_chain.py         # provider chain Groq -> SambaNova -> Ollama
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
-│   └── check_healthcare.py       # vertical diagnostic query
+│   ├── check_healthcare.py       # vertical diagnostic query
+│   ├── rtw_bonus_sensitivity.py  # what moves if the right-to-win customer-reference bonus changes
+│   └── derive_caps.py            # re-derives MARKET_SIGNAL_CAP / SOURCE_DIVERSITY_CAP from the link volume
 ├── docs/
 │   ├── decisions.md              # dated decision log
 │   └── technical_deep_dive.md    # score formulas, modules, bugs fixed, open issues
@@ -88,12 +100,13 @@ python radar_cli.py create         # register seed opportunity spaces
 python radar_cli.py promote        # register recurring themes
 python radar_cli.py link           # attach signals to each opportunity space
 python -m pipeline.scoring         # score (LLM); --refresh recomputes the deterministic sub-scores only
+                                   # --weights=manual uses the hand-set 30/20/25/10/15 instead of the AHP weights
                                    # exits non-zero if no LLM provider answered: the previous real scores are kept, not overwritten
 python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitting on a neutral fallback
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 144 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 187 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
@@ -125,10 +138,10 @@ every push.
 
 ## Key challenges
 
-- **LLM reliability**: the local Ollama fallback (used when Groq, Cerebras and SambaNova all fail) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
+- **LLM reliability**: the local Ollama fallback (used when Groq and SambaNova both fail) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
 - **Calibration on a moving dataset**: the urgency scale is re-derived on every run from the 95th percentile of the live opportunity-space population rather than hardcoded, since the dataset kept growing (133 spaces today) as sources came online. `radar_cli.py calibrate` prints signal-count percentiles to help choose how many signals `link` keeps per space. Near-duplicate signal detection still uses a fixed 0.85 similarity.
 - **Data correctness under concurrency**: SQLite timestamp collisions (two scores inserted milliseconds apart on the same machine) could silently pick the wrong "latest" score; the latest-score queries in `pipeline/db.py` use a deterministic tiebreaker (`id DESC`), and `insert_score()` updates each opportunity space's row in place, so there is one current score per space; every accepted write is also appended to `score_history` / `right_to_win_history`, so successive runs can be compared without changing what the radar reads.
 
 ## Tech stack
 
-Python, pandas, SQLite, Groq/Cerebras/SambaNova/Ollama (LLM scoring), Streamlit, Plotly, Power BI (export).
+Python, pandas, SQLite, Groq/SambaNova/Ollama (LLM scoring), Streamlit, Plotly, Power BI (export).

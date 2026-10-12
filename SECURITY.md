@@ -29,7 +29,7 @@ way, and it will be revoked rather than merely deleted.
 
 - The radar stores public market signals in `radar.db`; it holds no customer
   data.
-- Keys: `GROQ_API_KEY*`, `CEREBRAS_API_KEY`, `SAMBANOVA_API_KEY`,
+- Keys: `GROQ_API_KEY*`, `SAMBANOVA_API_KEY`,
   `NEWSAPI_AI_KEY`, `SEMANTIC_SCHOLAR_API_KEY`.
 - In scope: a fetched signal that changes the model's instructions, and the
   dashboard exposing anything beyond the scored opportunities.

@@ -5,7 +5,7 @@ Opportunity Space, what every score formula actually measures, which parts are a
 LLM judgment and which are arithmetic, and the defects that shaped the code.
 
 Figures come from `radar.db` — signals collected up to 30 August 2026, scored on
-30 September 2026 — and from a real run of the test suite on 12 October 2026, not
+re-linked and re-scored on 12 October 2026 — and from a real run of the test suite on 12 October 2026, not
 from memory. `radar.db` is committed as a snapshot (§8), so they describe that
 database, not whatever a fresh pipeline run would produce. Where a figure could only be obtained by
 calling the LLM again it is marked as measured on an earlier run and not
@@ -35,7 +35,7 @@ One pipeline, one SQLite file, two dashboards reading it.
         │        (27 seeds + recurring themes;                 ──► proposals
         │         UNIQUE(vertical, use_case, technology))       ──► radar_cli.py review (human)
         ▼                                                       ──► taxonomy_extensions.json
-   radar_cli.py link ── keyword overlap, per vertical,
+   radar_cli.py link ── >= 2 shared keywords, per vertical,
         │               top 56 signals per OS               ──► opportunity_signals
         ▼
    scoring.py ── 3 deterministic sub-scores + urgency (no LLM)
@@ -57,11 +57,11 @@ State of the current database:
 |---|---|
 | Signals | 4,272 (published May 1992 to August 2026, mostly recent; 9 undated; last collected 30/08/2026) |
 | Opportunity Spaces | 133 (OS001 to OS135; OS052 and OS053 were the removed duplicates) |
-| Signal links | 3,319, every OS has at least one |
+| Signal links | 469 under the 2-keyword minimum (3,319 under the old one-keyword rule); 32 OS have none (§8) |
 | Recurring themes tracked / promoted | 263 / 124 |
 | Watchlist terms / proposals | 235 / 8 (all rejected) |
-| Right-to-win levels | L0 10, L1 79, L2 0, L3 43, L4 1 |
-| Quadrants (strong / needs capability / moderate / low) | 16 / 5 / 77 / 35 |
+| Right-to-win levels | L0 12, L1 72, L2 1, L3 48, L4 0 |
+| Quadrants (strong / needs capability / moderate / low) | 6 / 2 / 85 / 40 |
 
 ---
 
@@ -74,18 +74,45 @@ linked signals.
 
 | Sub-score | Weight | Formula | How to read it |
 |---|---|---|---|
-| Market signal strength | 30% | `min(10, n / 56 × 10)` | Raw volume. 56 = `MARKET_SIGNAL_CAP`, equal to `link`'s `top_n`, so an OS reaches 10 exactly when `link` has to start cutting. The current 90th percentile of keyword-matching signals per OS is 52 (`calibrate_output.txt`), so 56 is not that percentile. |
-| Source diversity | 20% | `min(10, distinct source_name / 40 × 10)` | Counts distinct *publishers*, not connectors: for Google News and GDELT, `source_name` is the outlet (1,335 names in the DB for 9 connectors). TED and EUR-Lex are forced to one name each so a mirror site cannot count twice: 623 EUR-Lex signals and 185 TED signals sit under one name apiece. The fix only applies going forward, so 6 pre-fix rows still carry `docs.ted.europa.eu`; none of them is linked to an OS, so none reaches this sub-score. |
-| Evidence quality | 25% | LLM, 0–10, on the first 15 linked titles with their source | "Are these specific, credible, relevant?" 0.0 when the OS has no signal; 5.0 with the justification "LLM scoring unavailable" when no provider answered. |
-| Novelty / momentum | 10% | share of dated signals in the most recent third of the window [oldest signal, now], × 10 | Acceleration, not just recency. Uses `published_date`, falls back to `collected_at`. Neutral 5.0 below 3 datable signals. |
-| Strategic relevance | 15% | LLM, 0–10, against the Orange Business asset catalog; +0.5 for Defense, Aerospace & Defense, Healthcare | The LLM sees the triple and the *number* of signals, not their titles. The bonus reflects Orange running a dedicated division for those verticals. |
+| Market signal strength | 39.7% | `min(10, n / 15 × 10)` | Raw volume. 15 = `MARKET_SIGNAL_CAP`, derived by `scripts/derive_caps.py` (below). 6 of the 133 OS reach it; the widest has 37 linked signals, the median 2. |
+| Source diversity | 14.1% | `min(10, distinct source_name / 10 × 10)` | Counts distinct *publishers*, not connectors: for Google News and GDELT, `source_name` is the outlet (1,335 names in the DB for 9 connectors). TED and EUR-Lex are forced to one name each so a mirror site cannot count twice: 623 EUR-Lex signals and 185 TED signals sit under one name apiece. The fix only applies going forward, so 6 pre-fix rows still carry `docs.ted.europa.eu`; none of them is linked to an OS, so none reaches this sub-score. |
+| Evidence quality | 27.8% | LLM, 0–10, on the first 15 linked titles with their source | "Are these specific, credible, relevant?" 0.0 when the OS has no signal; 5.0 with the justification "LLM scoring unavailable" when no provider answered. |
+| Novelty / momentum | 5.5% | share of dated signals in the most recent third of the window [oldest signal, now], × 10 | Acceleration, not just recency. Uses `published_date`, falls back to `collected_at`. Neutral 5.0 below 3 datable signals. |
+| Strategic relevance | 13.0% | LLM, 0–10, against the Orange Business asset catalog; +0.5 for Defense, Aerospace & Defense, Healthcare | The LLM sees the triple and the *number* of signals, not their titles. The bonus reflects Orange running a dedicated division for those verticals. |
 
 ```
-total_score = 0.30·market + 0.20·diversity + 0.25·evidence + 0.10·novelty + 0.15·relevance
+total_score = Σ weight_k · sub_score_k     (weights sum to 1)
 ```
 
-60% of the weight is deterministic, 40% is an LLM judgment. The weights are a
-manual choice, not fitted to outcomes (see §8).
+The weights are the AHP priority vector of the pairwise judgments in
+`pipeline/ahp_weights.xlsx`, computed by `pipeline/ahp.py` (normalised row
+geometric means, the sheet's own method; the principal eigenvector agrees to
+within 0.2 points). Consistency ratio 0.021: the code refuses judgments at
+CR >= 0.10. The hand-set 30/20/25/10/15 (market/diversity/evidence/novelty/
+relevance) stays available as the `manual` weighting:
+`python -m pipeline.scoring --weights=manual`, or `WEIGHTING` in
+`pipeline/scoring.py`. 59.3% of the weight is deterministic, 40.7% an LLM
+judgment (manual: 60/40). AHP turns the team's judgments into consistent
+weights; it does not fit them to outcomes (see §8).
+
+**The two caps are derived, not chosen.** A cap only means something relative to
+how many signals `link` gives an OS, so `scripts/derive_caps.py` keeps each cap at
+the position the one-keyword caps (56 signals, 40 publishers) held under the
+one-keyword rule. The position is the mid-rank percentile, (OS below + half the OS
+equal) / 133, which stays defined when OS tie at the cap; the new cap is the
+inclusive quantile of the two-keyword distribution at that percentile, rounded.
+Both distributions are replayed from the signals through
+`radar_cli.matching_signals()`, so the result does not depend on which links the
+database stores. On the committed signals:
+
+| Cap | Old | Percentile of the old cap | New distribution (min / median / max) | New cap | p90 (cross-check) |
+|---|---|---|---|---|---|
+| `MARKET_SIGNAL_CAP` (signals) | 56 | 0.959 (11 OS tied at 56: `link` cuts at `top_n` 56, so the old distribution is censored there) | 0 / 2 / 37 | **15** | 8.8 |
+| `SOURCE_DIVERSITY_CAP` (publishers) | 40 | 0.947 (7 OS above, none at 40) | 0 / 1 / 28 | **10** | 8.0 |
+
+The cap is no longer equal to `top_n`. `tests/test_derive_caps.py` fails if the
+constants in `pipeline/scoring.py` drift from what the script derives from
+`radar.db`.
 
 ### 2.2 Right-to-win (0–10) — a separate axis, never summed with attractiveness
 
@@ -101,13 +128,39 @@ analyst recognition, capability facts and the named customers of *that* vertical
 | L4 | White space | 0–2 |
 
 Then deterministic calibration: **+0.5 per named customer reference** in the vertical
-(max +1.0), capped at 10 — the only bonus there is. A second bonus (+0.3 for CRM
+(max +1.0), capped at 10 — the only bonus there is (`customer_reference_bonus()`;
+the justification names the reference count, where it used to say "CRM customer
+overlap" although no CRM data is read). A second bonus (+0.3 for CRM
 opportunities in the vertical, +0.3 for pipeline value at or above the median) used
 to be coded, but it read `OPPORTUNITY_COUNT_BY_VERTICAL` and
 `PIPELINE_VALUE_BY_VERTICAL`, both empty, so it was always 0 while the
 justification still advertised it; the function and its two config dicts are gone.
 The right-to-win call does not read the linked signals at all — it judges the
 triple against the portfolio.
+
+`CUSTOMER_REFERENCE_BONUS` (0.5) and `CUSTOMER_REFERENCE_BONUS_CAP` (1.0) in
+`pipeline/scoring.py` are hand-set, and stay so: fitting them would need won/lost
+outcomes per OS, which the project does not have, so no value is "justified by
+the data" and none is pretended to be. What the data does show is how much rides
+on the choice. `python scripts/rtw_bonus_sensitivity.py` reads the bonus applied
+to each stored score back from its justification, recovers the LLM's own score,
+and re-applies other values (cap kept at 1.0), with no LLM call. On the database
+re-scored on 12 October (133 OS; 77 carry a bonus, 57 at +1.0 and 20 at +0.5):
+
+| Bonus per reference | RTW score changes | Crosses RTW 7 | Quadrant changes | Strong | Level changes |
+|---|---|---|---|---|---|
+| 0 (no bonus) | 77 | 6 | 6 | 6 | 0 |
+| 0.25 | 50 | 2 | 2 | 6 | 0 |
+| **0.5 (current)** | 0 | 0 | 0 | 6 | 0 |
+| 0.75 | 20 | 0 | 0 | 6 | 0 |
+
+The portfolio level (L0–L4) is the LLM's and never moves with the bonus, and no
+value changes the strong count. At 0.25 two OS change quadrant (OS054 and
+OS107, both L3 at 7.0); dropping the bonus moves six, all L3 OS the bonus lifts
+from 6.5 to 7 or more, none of them strong. Five stored scores were clipped at 10, so their LLM score is only a
+lower bound; none is near 7. The same references are also listed in the
+right-to-win prompt, so the bonus may count them a second time — a reason to
+keep it small, not a measurement.
 
 The level is validated against `L0`–`L4` before it is stored: an invented level
 falls back to `L4` and the justification says which value was rejected. The 0–10
@@ -128,10 +181,10 @@ urgency = min(10, weight / scaling_point × 10)
 `scaling_point` is the 95th percentile of `weight` across every scored OS,
 recomputed on each run (`statistics.quantiles(..., method="inclusive")`, clamped to
 the observed maximum, floor 1.0, fallback 6.0 when fewer than two OS have any
-weight). Recomputed on 5 October 2026 against the committed database it is 3.68;
-it was 3.69 when the stored urgency scores were written on 30 September. Nothing
-in the database changed: buying signals lose weight as they age, so the scaling
-point drifts with the calendar even on a frozen snapshot. **An OS's urgency can
+weight). On the database re-linked on 12 October 2026 it is 1.75: with 469 links
+instead of 3,319 each OS weighs fewer urgent signals (it was 3.68 on 5 October
+and 3.69 on 30 September, on the old links). It also drifts with the calendar on
+a frozen snapshot: buying signals lose weight as they age. **An OS's urgency can
 move without anything about that OS changing** — that is the population moving
 (or simply ageing), by design.
 
@@ -157,19 +210,22 @@ A missing score yields no quadrant rather than "low".
 
 | Module | Lines | What it owns |
 |---|---|---|
-| `pipeline/config.py` | 580 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`. |
+| `pipeline/config.py` | 587 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
 | `pipeline/ingest.py` | 611 | One fetcher per source, `safe_run()` isolation, GDELT and Semantic Scholar disk-backed cooldowns (`logs/.source_cooldowns.json`), timestamped run log. |
 | `pipeline/analyze.py` | 201 | Theme extraction: `_call_theme_extraction_llm()` (the only LLM boundary), `_classify_themes()` (pure, unit-tested), thin orchestrator; `--from=` resumes after a quota stop. |
 | `pipeline/theme_promotion.py` | 46 | Tracks valid themes across runs; feeds `promote`. |
-| `pipeline/extend_taxonomy.py` | 204 | Watchlist term → proposal once frequency ≥ 5. |
+| `pipeline/extend_taxonomy.py` | 212 | Watchlist term → proposal once frequency ≥ `TAXONOMY_PROPOSAL_THRESHOLD` (5, in `config.py`). |
 | `pipeline/taxonomy_validation.py` | 6 | Rejects bare generic terms ("AI") while keeping compounds ("Generative AI"). |
-| `pipeline/scoring.py` | 837 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
+| `pipeline/ahp.py` | 98 | AHP priority vector and consistency ratio from `pipeline/ahp_weights.xlsx`; refuses CR >= 0.10. |
+| `pipeline/scoring.py` | 899 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
 | `pipeline/db.py` | 757 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker, foreign-key repair, append-only score history. |
-| `llm/llm_client.py` | 271 | Provider chain, Groq key rotation, JSON extraction. |
-| `radar_cli.py` | 643 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
+| `llm/llm_client.py` | 234 | Provider chain, Groq key rotation, JSON extraction. |
+| `radar_cli.py` | 667 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
 | `app/streamlit_app.py` | 691 | Polar radar and bubble views, sidebar filters (vertical, domain, horizon, owning team, buyer persona, geography), per-OS breakdown and next actions per role. |
 | `radar_cli_top_15.py`, `pipeline/signals_discovery.py` | 518, 58 | Older CLI and its copy of `theme_promotion`, kept on purpose (see `decisions.md`). |
 | `scripts/` | | One-off healthcare analysis, run from the repo root. |
+| `scripts/derive_caps.py` | 110 | Re-derives `MARKET_SIGNAL_CAP` and `SOURCE_DIVERSITY_CAP` from the link volume of both keyword rules (§2.1); read-only. |
+| `scripts/rtw_bonus_sensitivity.py` | 110 | Re-applies other customer-reference bonus values to the stored right-to-win scores and counts what moves (§2.2); read-only, no LLM. |
 | `scripts/export_powerbi.py` | 224 | Exports `radar.db` (opened read-only) to the six CSV files the Power BI project reads, reports unparseable dates, and warns when the model's `DataFolder` points elsewhere; run it before a Refresh. |
 
 ### Data model
@@ -207,8 +263,8 @@ geographies, horizon, domain, one next action per role). No agent, no tool use, 
 multi-step loop.
 
 - **Provider chain** (`LLM_PROVIDER=auto`): Groq (`openai/gpt-oss-120b`, up to 5
-  keys, rotated only on 429/quota errors) → Cerebras → SambaNova → local Ollama
-  (`llama3.2:3b`). A provider with no key is skipped. Temperature 0 on Groq, Cerebras and SambaNova;
+  keys, rotated only on 429/quota errors) → SambaNova → local Ollama
+  (`llama3.2:3b`). A provider with no key is skipped. Temperature 0 on Groq and SambaNova;
   the Ollama call sends no temperature, so it runs at the model's default.
 - **Closed vocabularies**: the LLM must pick use cases and technologies from the
   taxonomy, domains from `DOMAINS_TAXONOMY`; anything else goes to the watchlist
@@ -229,7 +285,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-144 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
+187 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -242,8 +298,14 @@ reaching the internet.
 | `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
 | `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
 | `tests/test_score_history.py` | 8 | Score history: every accepted write appended while `scores` keeps one row, a refused fallback leaves no trace, right-to-win history, the one-time baseline, history surviving a deleted OS, `init_db()` on a new database, and latest-score reads unchanged on a copy of the committed `radar.db`. |
+| `tests/test_taxonomy_threshold.py` | 5 | One proposal threshold: both defaults read `TAXONOMY_PROPOSAL_THRESHOLD`, a call without a threshold proposes the same terms as the pipeline, an explicit threshold still wins. |
 | `tests/test_foreign_keys.py` | 4 | The replayed migration that left child tables pointing at a dropped parent, the repair, foreign keys on every connection, no violation left in a copy of `radar.db`. |
 | `tests/test_network_guard.py` | 4 | The socket block itself. |
+| `tests/test_link_keywords.py` | 7 | `link` needs 2 distinct shared keywords; links below the minimum are pruned for the OS they are weak for only; `calibrate` counts with the same minimum. |
+| `tests/test_ahp_weights.py` | 10 | AHP weights of the committed sheet and their CR; reciprocals rebuilt; inconsistent or non-positive judgments refused; `manual` kept as a named option; `--weights` refuses an unknown name. |
+| `tests/test_derive_caps.py` | 6 | Cap derivation: mid-rank percentile with ties, inclusive quantile, both link rules replayed without writing, and the constants in `scoring.py` equal to the derivation on `radar.db`. |
+| `tests/test_llm_chain.py` | 8 | Provider chain Groq → SambaNova → Ollama: order, fall-through, last error raised, one named provider alone, no Cerebras left. |
+| `tests/test_rtw_bonus.py` | 7 | Customer-reference bonus: documented defaults, per-reference and cap, configurable value reaching the stored score, and the sensitivity counts. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
 monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`)
@@ -283,9 +345,10 @@ Restored from the project backup.
 The overview used 8, the detail panel 7, and a right-to-win in [7, 8) fell in no
 quadrant at all. One constant now: overview counts went from 5/1/66/61 to
 12/4/87/30 on the data of 29 September (that scoring run has been overwritten, so
-those two figures are not re-derivable). On the committed database the same
-comparison now reads 11/2/61/59 at a threshold of 8 against the 16/5/77/35 of §1
-at 7 — the shape of the point, not the exact counts, is what carried.
+those two figures are not re-derivable). On the 30 September scores the same
+comparison read 11/2/61/59 at a threshold of 8 against 16/5/77/35 at 7; on the
+scores of 12 October it reads 4/3/58/68 against 6/2/85/40 — the shape of the
+point, not the exact counts, is what carried.
 
 ### 6.6 Two Groq keys never used
 `.env` defined `GROQ_API_KEY_4` and `_5`; the client read keys 1–3, so runs fell
@@ -362,15 +425,15 @@ temperature 0, which makes repeated calls close, not identical.
 
 | Open issue | Why it matters |
 |---|---|
-| `link` accepts a single shared keyword | 12 links (6 articles from general outlets) are off-topic: "Natasha Cloud" → Cloud, strikes on Ukraine's "energy sector" → Energy. That 12/6 is a hand count over the link table, not a query, so it is not re-derived here; the two named articles account for 4 of the links in the committed database. Requiring 2 keywords would change every link — team decision. |
-| Fallback scores are kept until someone re-runs | A refused write (§6.11) leaves yesterday's real score in place and exits non-zero, which is the right default but means the radar can hold a score older than its signals. `--rescue-fallback` re-scores the spaces still on a fallback; none of the 133 is on one in the committed database. |
+| `link` now needs 2 shared keywords — and 32 OS have none | `MIN_KEYWORD_OVERLAP = 2` in `radar_cli.py`. On a seeded, hand-checked sample of 120 committed links (`docs/link_sample_2026-10-12.csv`), 31 of 80 single-keyword links were off-topic against 3 of 40 at two or more; "1 keyword + same vertical" kept 13 of 40 off-topic, "Natasha Cloud" → Cloud among them. Re-linking a copy of the committed database: 3,319 → 469 links. Extrapolating the sample rates to the 2,850 dropped links, about 1,070 off-topic links go and about 1,780 legitimate ones go with them. **32 of 133 OS end with no link at all**, OS020 (the top OS by attractiveness) among them — mostly OS whose use case and technology repeat one generic word ("Cloud Infrastructure Modernization × Cloud"). The median OS keeps 2 signals; the market and diversity caps were re-derived for that volume (§2.1). `radar.db` was re-linked and re-scored with it on 12 October: strong 16 → 6, mean attractiveness 5.25 → 3.33; OS020 fell from 9.19 to 1.04 (no link left), OS083 from 7.59 to 0.26, OS004 from 7.49 to 0.65. |
+| Fallback scores are kept until someone re-runs | A refused write (§6.11) leaves yesterday's real score in place and exits non-zero, which is the right default but means the radar can hold a score older than its signals. `--rescue-fallback` re-scores the spaces still on a fallback; none of the 133 is on one in the committed database. One OS carries older LLM sub-scores instead: for OS106 Groq answers the evidence-quality prompt with one JSON object per source instead of `{score, justification}`, on every try at temperature 0 (Ollama failed too), so its evidence quality (4.0) and strategic relevance (5.5) are the 30 September values; its deterministic sub-scores and total (4.35) were refreshed on 12 October. The prompt asks for one object clearly, so it was left unchanged: rewording it would move every OS's evidence score. |
 | Right-to-win never reads the signals | By design it judges the triple against the portfolio, but it means evidence cannot move it. |
 | Strategic relevance sees only the signal count | Not the titles; two OS with the same triple wording and count get the same prompt. |
-| Weights are manual | 30/20/25/10/15 were chosen by hand. `tests/ahp_weights.xlsx` is an AHP pairwise-comparison sheet, not wired into the code. |
-| Taxonomy thresholds disagree | `generate_all_proposals()` defaults to 3 but is called with 5; `RECURRING_THEME_PROMOTION_THRESHOLD` is 2 and is the only promotion threshold. None calibrated. |
-| Right-to-win calibration is one hand-set bonus | +0.5 per customer reference in the vertical, capped at +1.0, chosen by hand and not fitted to anything. The older pipeline-value bonus is gone along with its two empty config dicts (§2.2). |
-| Cerebras and SambaNova keys fail | 402 and 401 on 29/09: the fallback chain is effectively Groq → Ollama. Not re-tested here — checking it means calling the providers. |
-| `source_diversity` counts publishers | With a cap of 40, an OS linked to many small outlets scores high on diversity. 7 of the 133 OS are at or above the cap; the widest has 45 distinct publishers, the median 12. |
+| Weights come from AHP judgments, not outcomes | `pipeline/ahp_weights.xlsx` (moved from `tests/`, which the Docker image excludes) now sets the weights: 39.7/27.8/14.1/13.0/5.5 for market/evidence/diversity/relevance/novelty, CR 0.021. The judgments are still a team's opinion, made consistent, not fitted to any win/loss data, which the project does not have. Re-totalled from the stored sub-scores of the 133 OS, the top 15 keep the same members (4 adjacent swaps: OS001/OS013, OS134 9th from 11th, OS029, OS017/OS014); 103 OS change rank, by at most 11 places; totals move by at most 0.42; strong 16 -> 19 (OS034, OS065, OS108 cross 7). The re-score of 12 October applied them. |
+| Taxonomy thresholds are not calibrated | A watchlist term becomes a proposal at `TAXONOMY_PROPOSAL_THRESHOLD` = 5 sightings; a valid theme becomes an OS at `RECURRING_THEME_PROMOTION_THRESHOLD` = 2; `analyze.py` lists watchlist terms "ready for review" from `WATCHLIST_PROMOTION_THRESHOLD` = 2, a display filter only. All hand-set, none calibrated. The proposal threshold used to be 3 as the default of `generate_all_proposals()` and 5 at its only call; since 12/10 both read the one constant, kept at 5, so nothing the pipeline does changed. On the committed `radar.db`, 8 watchlist terms are at 5 or more and 33 at 3 or more. |
+| Right-to-win calibration is one hand-set bonus | +0.5 per customer reference in the vertical, capped at +1.0: now two named parameters (`CUSTOMER_REFERENCE_BONUS`, `CUSTOMER_REFERENCE_BONUS_CAP`), still not fitted — there are no won/lost outcomes to fit them to. `scripts/rtw_bonus_sensitivity.py` shows what rides on the value: on the re-scored database 2 of 133 OS change quadrant at 0.25, none at 0.75, 6 with no bonus, and the strong count never moves (§2.2). A new value takes effect when right-to-win is re-scored (`--recalibrate-right-to-win`, an LLM run). |
+| SambaNova is rate-limited | One test call on 12/10 got 429 (the key is accepted; it got 401 on 29/09), so in practice the chain often falls from Groq to Ollama. The 12/10 re-score ran on Groq: all five keys answered. |
+| `source_diversity` counts publishers | With a cap of 10, an OS linked to many small outlets scores high on diversity. 8 of the 133 OS are at or above the cap; the widest has 28 distinct publishers, the median 1. |
 | Power BI refresh path | Power Query has no relative file paths, so the `DataFolder` parameter is an absolute path to one machine; `export_powerbi.py` now warns and prints the right value when it does not match. The CSV export must be re-run by hand after each pipeline run. The quadrant threshold 7 is restated in the model instead of read from `STRONG_THRESHOLD`. |
-| Right-to-win is not stable across runs | Two scoring runs on the same linked signals (29/09 and 30/09) moved 38 of 133 OS to another level, 30 of them between L1 and L3. The top 15 by attractiveness kept the same members, in a different order. **Measured on those two runs and not re-verified.** Since 12/10 every score write is kept in `score_history` / `right_to_win_history` (§3), so the next two scoring runs can be compared from the database; that still means two LLM runs, and none has been made. |
+| Right-to-win is not stable across runs | Two scoring runs on the same linked signals (29/09 and 30/09) moved 38 of 133 OS to another level, 30 of them between L1 and L3. The top 15 by attractiveness kept the same members, in a different order. Re-measured from `right_to_win_history` on 12/10: right-to-win reads neither the links nor the weights and its prompt did not change, yet against the 30/09 baseline 29 of 133 OS changed level, 23 of them between L1 and L3. Same order of magnitude. |
 | Dependencies pinned, except Streamlit | `requirements.txt` pins exact versions for the other eight packages; `streamlit>=1.49` is a floor because Streamlit Cloud upgrades its own runtime. A pin is the version the project was tested against, not a version anyone validated as the best. |
