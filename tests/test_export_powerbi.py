@@ -134,6 +134,47 @@ class TestMainIsReadOnly:
             export_powerbi.main()
         assert not db.exists()
 
+    def test_latest_scores_carry_the_linked_signal_count(self, tmp_path, monkeypatch):
+        """The model puts an OS with no linked signal in "Insufficient Evidence",
+        so the count must reach the CSV, and zero must be written as 0."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(SCHEMA)
+        migrate_schema(conn)
+        for os_id in (1, 2):
+            conn.execute(
+                "INSERT INTO opportunity_spaces (id, label, vertical, use_case, technology, created_at)"
+                " VALUES (?, ?, 'Energy', 'u', 't', '2026-10-12')",
+                (os_id, f"OS00{os_id}"),
+            )
+            conn.execute(
+                "INSERT INTO scores (opportunity_space_id, total_score, computed_at)"
+                " VALUES (?, 1.0, '2026-10-12')",
+                (os_id,),
+            )
+        conn.execute(
+            "INSERT INTO signals (id, source_name, signal_type, title, collected_at)"
+            " VALUES (10, 's', 'news', 'a', '2026-10-12'), (11, 's', 'news', 'b', '2026-10-12')"
+        )
+        conn.execute("INSERT INTO opportunity_signals VALUES (1, 10), (1, 11)")
+        monkeypatch.setattr(export_powerbi, "OUT_DIR", str(tmp_path))
+        export_powerbi.export_query(conn, "latest_scores", export_powerbi.LATEST_SCORES_SQL)
+        rows = _read(tmp_path / "latest_scores.csv")
+        col = rows[0].index("linked_signals")
+        assert [r[col] for r in rows[1:]] == ["2", "0"]
+
+    def test_model_types_the_count_and_uses_it_in_the_quadrant(self):
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "app", "innovation_radar_dashboard.SemanticModel", "model.bim",
+        )
+        with open(path, encoding="utf-8") as f:
+            model = json.load(f)
+        scores = next(t for t in model["model"]["tables"] if t["name"] == "Scores")
+        query = "".join(scores["partitions"][0]["source"]["expression"])
+        assert '{"linked_signals", Int64.Type}' in query
+        assert '[linked_signals] = 0 then "Insufficient Evidence"' in query
+        assert any(c.get("sourceColumn") == "linked_signals" for c in scores["columns"])
+
     def test_main_writes_the_six_files_the_model_reads(self, tmp_path, monkeypatch):
         db = tmp_path / "radar.db"
         conn = sqlite3.connect(db)

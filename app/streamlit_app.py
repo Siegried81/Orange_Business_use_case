@@ -288,7 +288,12 @@ with col1:
     st.metric("Opportunity Spaces", len(filtered))
 quadrant_counts = (
     filtered.apply(
-        lambda r: quadrant(r["total_score"], r["right_to_win_score"]), axis=1
+        lambda r: quadrant(
+            r["total_score"],
+            r["right_to_win_score"],
+            linked_signals=len(signals_by_os.get(r["id"], [])),
+        ),
+        axis=1,
     )
     .value_counts()
     .reindex(QUADRANTS, fill_value=0)
@@ -318,7 +323,7 @@ with col4:
 with col5:
     st.markdown("**By quadrant**")
     st.caption(
-        f"⭐ Strong: {quadrant_counts['strong']}  \n⚠️ Needs capability: {quadrant_counts['needs_capability']}  \n💡 Moderate market: {quadrant_counts['moderate_market']}  \n📉 Low both: {quadrant_counts['low_both']}"
+        f"⭐ Strong: {quadrant_counts['strong']}  \n⚠️ Needs capability: {quadrant_counts['needs_capability']}  \n💡 Moderate market: {quadrant_counts['moderate_market']}  \n📉 Low both: {quadrant_counts['low_both']}  \n🔍 Not enough evidence: {quadrant_counts['insufficient_evidence']}"
     )
 query_topic = st.query_params.get("topic")
 labels = sorted(filtered["label"].tolist())
@@ -569,7 +574,9 @@ with tab_evidence:
     st.markdown("#### 🧭 Strategic position")
     attractiveness = row.total_score
     right_to_win = row.right_to_win_score
-    position = quadrant(attractiveness, right_to_win)
+    position = quadrant(
+        attractiveness, right_to_win, linked_signals=len(signals_by_os.get(row.id, []))
+    )
     if position is not None:
         if position == "strong":
             st.success(
@@ -578,6 +585,12 @@ with tab_evidence:
         elif position == "needs_capability":
             st.warning(
                 "⚠️ Attractive opportunity, but Orange Business may need additional capabilities."
+            )
+        elif position == "insufficient_evidence":
+            st.info(
+                "🔍 Not enough evidence: no signal is linked to this opportunity "
+                "space, so its attractiveness is computed on nothing. This is not "
+                "a verdict on the market."
             )
         elif position == "moderate_market":
             st.info(
