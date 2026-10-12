@@ -49,6 +49,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
 │   ├── test_score_history.py     # every score write kept in the history tables, current reads unchanged
+│   ├── test_taxonomy_threshold.py # one taxonomy proposal threshold for every entry point
 │   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
@@ -93,7 +94,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 144 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 149 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
