@@ -363,8 +363,8 @@ class TestNonNumericLlmScore:
             "Manufacturing", "Energy Optimization", "IoT Platforms"
         )
         assert distance == "L1"
-        # The neutral score still gets the deterministic CRM bonus on top.
-        expected = scoring.NEUTRAL_SCORE + scoring.crm_customer_overlap_bonus(
+        # The neutral score still gets the deterministic reference bonus on top.
+        expected = scoring.NEUTRAL_SCORE + scoring.customer_reference_bonus(
             "Manufacturing"
         )
         assert score == expected
@@ -424,7 +424,7 @@ class TestPortfolioDistanceValidation:
 class TestRightToWinJustificationClaimsOnlyRealBonuses:
     """The pipeline/opportunity-count bonus read two empty config dicts, so it
     was always 0 while the justification still advertised it. The function and
-    its mention are gone; only the CRM customer-overlap bonus is real."""
+    its mention are gone; only the customer-reference bonus is real."""
 
     def test_no_pipeline_bonus_function_left(self):
         assert not hasattr(scoring, "pipeline_calibration_bonus")
@@ -466,7 +466,9 @@ class TestRightToWinJustificationClaimsOnlyRealBonuses:
             vertical_with_reference, "Energy Optimization", "IoT Platforms"
         )
         assert score > 7.0
-        assert "CRM customer overlap" in justification
+        assert "named customer reference(s)" in justification
+        assert "calibration bonus" in justification
+        assert "CRM" not in justification
 
 
 class TestNetworkIsBlockedInTests:

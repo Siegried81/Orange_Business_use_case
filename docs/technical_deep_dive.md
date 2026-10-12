@@ -5,9 +5,9 @@ Opportunity Space, what every score formula actually measures, which parts are a
 LLM judgment and which are arithmetic, and the defects that shaped the code.
 
 Figures come from `radar.db` — signals collected up to 30 August 2026, scored on
-30 September 2026 — and from a real run of the test suite on 5 October 2026, not
-from memory. `radar.db` is not versioned, so they describe that database, not
-whatever a fresh clone would produce. Where a figure could only be obtained by
+30 September 2026 — and from a real run of the test suite on 12 October 2026, not
+from memory. `radar.db` is a committed snapshot, so they describe that database,
+not whatever a fresh ingest would produce. Where a figure could only be obtained by
 calling the LLM again it is marked as measured on an earlier run and not
 re-verified. The dated reasoning behind each change lives in
 [`decisions.md`](decisions.md).
@@ -101,13 +101,40 @@ analyst recognition, capability facts and the named customers of *that* vertical
 | L4 | White space | 0–2 |
 
 Then deterministic calibration: **+0.5 per named customer reference** in the vertical
-(max +1.0), capped at 10 — the only bonus there is. A second bonus (+0.3 for CRM
+(max +1.0), capped at 10 — the only bonus there is (`customer_reference_bonus()`;
+the justification names the reference count, where it used to say "CRM customer
+overlap" although no CRM data is read). A second bonus (+0.3 for CRM
 opportunities in the vertical, +0.3 for pipeline value at or above the median) used
 to be coded, but it read `OPPORTUNITY_COUNT_BY_VERTICAL` and
 `PIPELINE_VALUE_BY_VERTICAL`, both empty, so it was always 0 while the
 justification still advertised it; the function and its two config dicts are gone.
 The right-to-win call does not read the linked signals at all — it judges the
 triple against the portfolio.
+
+`CUSTOMER_REFERENCE_BONUS` (0.5) and `CUSTOMER_REFERENCE_BONUS_CAP` (1.0) in
+`pipeline/scoring.py` are hand-set, and stay so: fitting them would need won/lost
+outcomes per OS, which the project does not have, so no value is "justified by
+the data" and none is pretended to be. What the data does show is how much rides
+on the choice. `python scripts/rtw_bonus_sensitivity.py` reads the bonus applied
+to each stored score back from its justification, recovers the LLM's own score,
+and re-applies other values (cap kept at 1.0), with no LLM call. On the committed
+database (133 OS; 77 carry a bonus, 57 at +1.0 and 20 at +0.5):
+
+| Bonus per reference | RTW score changes | Crosses RTW 7 | Quadrant changes | Strong | Level changes |
+|---|---|---|---|---|---|
+| 0 (no bonus) | 77 | 7 | 7 | 14 | 0 |
+| 0.25 | 50 | 1 | 1 | 16 | 0 |
+| **0.5 (current)** | 0 | 0 | 0 | 16 | 0 |
+| 0.75 | 20 | 0 | 0 | 16 | 0 |
+
+The portfolio level (L0–L4) is the LLM's and never moves with the bonus. Between
+0.25 and 0.75 at most one OS changes quadrant (OS107, Transportation and
+Logistics, 7.0 → 6.75 at 0.25); dropping the bonus moves seven, all L3 OS that
+the LLM scored 6.5 and the bonus lifts to 7 or more (OS026 and OS083 leave
+"strong"). Five stored scores were clipped at 10, so their LLM score is only a
+lower bound; none is near 7. The same references are also listed in the
+right-to-win prompt, so the bonus may count them a second time — a reason to
+keep it small, not a measurement.
 
 The level is validated against `L0`–`L4` before it is stored: an invented level
 falls back to `L4` and the justification says which value was rejected. The 0–10
@@ -163,13 +190,14 @@ A missing score yields no quadrant rather than "low".
 | `pipeline/theme_promotion.py` | 46 | Tracks valid themes across runs; feeds `promote`. |
 | `pipeline/extend_taxonomy.py` | 204 | Watchlist term → proposal once frequency ≥ 5. |
 | `pipeline/taxonomy_validation.py` | 6 | Rejects bare generic terms ("AI") while keeping compounds ("Generative AI"). |
-| `pipeline/scoring.py` | 837 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
+| `pipeline/scoring.py` | 862 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
 | `pipeline/db.py` | 564 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker. |
 | `llm/llm_client.py` | 271 | Provider chain, Groq key rotation, JSON extraction. |
 | `radar_cli.py` | 643 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
 | `app/streamlit_app.py` | 691 | Polar radar and bubble views, sidebar filters (vertical, domain, horizon, owning team, buyer persona, geography), per-OS breakdown and next actions per role. |
 | `radar_cli_top_15.py`, `pipeline/signals_discovery.py` | 518, 58 | Older CLI and its copy of `theme_promotion`, kept on purpose (see `decisions.md`). |
 | `scripts/` | | One-off healthcare analysis, run from the repo root. |
+| `scripts/rtw_bonus_sensitivity.py` | 110 | Re-applies other customer-reference bonus values to the stored right-to-win scores and counts what moves (§2.2); read-only, no LLM. |
 | `scripts/export_powerbi.py` | 224 | Exports `radar.db` (opened read-only) to the six CSV files the Power BI project reads, reports unparseable dates, and warns when the model's `DataFolder` points elsewhere; run it before a Refresh. |
 
 ### Data model
@@ -214,7 +242,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-128 tests, all passing on 5 October 2026, no network (`python -m pytest`, a few
+143 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -226,9 +254,13 @@ reaching the internet.
 | `tests/test_export_powerbi.py` | 17 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB. |
 | `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
 | `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
+| `tests/test_foreign_keys.py` | 4 | Foreign keys enforced per connection; child tables still pointing at a renamed parent rebuilt onto the live one. |
+| `tests/test_network_guard.py` | 4 | The socket guard in `conftest.py`: every connection refused except the one `socketpair()` makes to itself. |
+| `tests/test_rtw_bonus.py` | 7 | Customer-reference bonus: documented defaults, per-reference and cap, configurable value reaching the stored score, and the sensitivity counts. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
-monkeypatched at `scoring.get_llm_json`). There is no CI; the suite is run by hand.
+monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`) runs
+the suite on every push.
 
 ---
 
@@ -349,7 +381,7 @@ temperature 0, which makes repeated calls close, not identical.
 | Strategic relevance sees only the signal count | Not the titles; two OS with the same triple wording and count get the same prompt. |
 | Weights are manual | 30/20/25/10/15 were chosen by hand. `tests/ahp_weights.xlsx` is an AHP pairwise-comparison sheet, not wired into the code. |
 | Taxonomy thresholds disagree | `generate_all_proposals()` defaults to 3 but is called with 5; `RECURRING_THEME_PROMOTION_THRESHOLD` is 2 and is the only promotion threshold. None calibrated. |
-| Right-to-win calibration is one hand-set bonus | +0.5 per customer reference in the vertical, capped at +1.0, chosen by hand and not fitted to anything. The older pipeline-value bonus is gone along with its two empty config dicts (§2.2). |
+| Right-to-win calibration is one hand-set bonus | +0.5 per customer reference in the vertical, capped at +1.0: now two named parameters (`CUSTOMER_REFERENCE_BONUS`, `CUSTOMER_REFERENCE_BONUS_CAP`), still not fitted — there are no won/lost outcomes to fit them to. `scripts/rtw_bonus_sensitivity.py` shows what rides on the value: between 0.25 and 0.75 at most 1 of 133 OS changes quadrant, with no bonus 7 do (§2.2). A new value takes effect when right-to-win is re-scored (`--recalibrate-right-to-win`, an LLM run). |
 | Cerebras and SambaNova keys fail | 402 and 401 on 29/09: the fallback chain is effectively Groq → Ollama. Not re-tested here — checking it means calling the providers. |
 | `source_diversity` counts publishers | With a cap of 40, an OS linked to many small outlets scores high on diversity. 7 of the 133 OS are at or above the cap; the widest has 45 distinct publishers, the median 12. |
 | Power BI refresh path | Power Query has no relative file paths, so the `DataFolder` parameter is an absolute path to one machine; `export_powerbi.py` now warns and prints the right value when it does not match. The CSV export must be re-run by hand after each pipeline run. The quadrant threshold 7 is restated in the model instead of read from `STRONG_THRESHOLD`. |

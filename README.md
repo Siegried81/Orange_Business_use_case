@@ -48,11 +48,15 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
-│   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_foreign_keys.py      # foreign keys enforced, child tables repaired onto the live parent
+│   ├── test_network_guard.py     # the socket guard in conftest.py
+│   └── test_rtw_bonus.py         # right-to-win customer-reference bonus and its sensitivity
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
-│   └── check_healthcare.py       # vertical diagnostic query
+│   ├── check_healthcare.py       # vertical diagnostic query
+│   └── rtw_bonus_sensitivity.py  # what moves if the right-to-win customer-reference bonus changes
 ├── docs/
 │   ├── decisions.md              # dated decision log
 │   └── technical_deep_dive.md    # score formulas, modules, bugs fixed, open issues
@@ -92,7 +96,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 136 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 143 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):

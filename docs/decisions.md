@@ -175,3 +175,26 @@ revisit it. Append only — never rewrite a past entry.
   repair is idempotent and a healthy database is left alone.
 - **Revisit if:** a future migration renames a parent table — set
   `PRAGMA legacy_alter_table = ON` around the rename, or run the repair after.
+
+## 2026-10-12 — Right-to-win reference bonus stays hand-set, now a named parameter
+
+- **What:** the bonus is `CUSTOMER_REFERENCE_BONUS = 0.5` per named customer
+  reference in the vertical, capped at `CUSTOMER_REFERENCE_BONUS_CAP = 1.0`,
+  in `pipeline/scoring.py`; `customer_reference_bonus()` replaces
+  `crm_customer_overlap_bonus()`. `scripts/rtw_bonus_sensitivity.py` re-applies
+  other values to the stored scores and counts what moves, without the LLM.
+- **Why not fitted:** fitting needs an outcome per OS (won, lost, pursued),
+  and the radar has none: the two CRM dicts that would have held it were
+  empty and are gone, and the 18 customer references are the input of the
+  bonus, not an outcome. Any "fitted" value would be invented, so the value
+  is kept and its sensitivity published instead.
+- **Changes the numbers:** none at the default. Sensitivity on the committed
+  database (133 OS, 77 with a bonus): at 0.25 per reference 1 OS changes
+  quadrant (OS107), at 0.75 none, with no bonus 7 (all L3 OS scored 6.5 by
+  the LLM; strong 16 -> 14). The portfolio level never moves. The
+  justification now names the reference count instead of "CRM customer
+  overlap", which described data the code never read; stored justifications
+  keep the old wording until right-to-win is re-scored.
+- **Revisit if:** won/lost outcomes per OS become available -- then fit the
+  bonus (or drop it: the references are already in the prompt, so the LLM may
+  count them once already).
