@@ -157,11 +157,11 @@ A missing score yields no quadrant rather than "low".
 
 | Module | Lines | What it owns |
 |---|---|---|
-| `pipeline/config.py` | 580 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`. |
+| `pipeline/config.py` | 587 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
 | `pipeline/ingest.py` | 611 | One fetcher per source, `safe_run()` isolation, GDELT and Semantic Scholar disk-backed cooldowns (`logs/.source_cooldowns.json`), timestamped run log. |
 | `pipeline/analyze.py` | 201 | Theme extraction: `_call_theme_extraction_llm()` (the only LLM boundary), `_classify_themes()` (pure, unit-tested), thin orchestrator; `--from=` resumes after a quota stop. |
 | `pipeline/theme_promotion.py` | 46 | Tracks valid themes across runs; feeds `promote`. |
-| `pipeline/extend_taxonomy.py` | 204 | Watchlist term → proposal once frequency ≥ 5. |
+| `pipeline/extend_taxonomy.py` | 212 | Watchlist term → proposal once frequency ≥ `TAXONOMY_PROPOSAL_THRESHOLD` (5, in `config.py`). |
 | `pipeline/taxonomy_validation.py` | 6 | Rejects bare generic terms ("AI") while keeping compounds ("Generative AI"). |
 | `pipeline/scoring.py` | 837 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
 | `pipeline/db.py` | 757 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker, foreign-key repair, append-only score history. |
@@ -229,7 +229,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-144 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
+149 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -242,6 +242,7 @@ reaching the internet.
 | `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
 | `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
 | `tests/test_score_history.py` | 8 | Score history: every accepted write appended while `scores` keeps one row, a refused fallback leaves no trace, right-to-win history, the one-time baseline, history surviving a deleted OS, `init_db()` on a new database, and latest-score reads unchanged on a copy of the committed `radar.db`. |
+| `tests/test_taxonomy_threshold.py` | 5 | One proposal threshold: both defaults read `TAXONOMY_PROPOSAL_THRESHOLD`, a call without a threshold proposes the same terms as the pipeline, an explicit threshold still wins. |
 | `tests/test_foreign_keys.py` | 4 | The replayed migration that left child tables pointing at a dropped parent, the repair, foreign keys on every connection, no violation left in a copy of `radar.db`. |
 | `tests/test_network_guard.py` | 4 | The socket block itself. |
 
@@ -367,7 +368,7 @@ temperature 0, which makes repeated calls close, not identical.
 | Right-to-win never reads the signals | By design it judges the triple against the portfolio, but it means evidence cannot move it. |
 | Strategic relevance sees only the signal count | Not the titles; two OS with the same triple wording and count get the same prompt. |
 | Weights are manual | 30/20/25/10/15 were chosen by hand. `tests/ahp_weights.xlsx` is an AHP pairwise-comparison sheet, not wired into the code. |
-| Taxonomy thresholds disagree | `generate_all_proposals()` defaults to 3 but is called with 5; `RECURRING_THEME_PROMOTION_THRESHOLD` is 2 and is the only promotion threshold. None calibrated. |
+| Taxonomy thresholds are not calibrated | A watchlist term becomes a proposal at `TAXONOMY_PROPOSAL_THRESHOLD` = 5 sightings; a valid theme becomes an OS at `RECURRING_THEME_PROMOTION_THRESHOLD` = 2; `analyze.py` lists watchlist terms "ready for review" from `WATCHLIST_PROMOTION_THRESHOLD` = 2, a display filter only. All hand-set, none calibrated. The proposal threshold used to be 3 as the default of `generate_all_proposals()` and 5 at its only call; since 12/10 both read the one constant, kept at 5, so nothing the pipeline does changed. On the committed `radar.db`, 8 watchlist terms are at 5 or more and 33 at 3 or more. |
 | Right-to-win calibration is one hand-set bonus | +0.5 per customer reference in the vertical, capped at +1.0, chosen by hand and not fitted to anything. The older pipeline-value bonus is gone along with its two empty config dicts (§2.2). |
 | Cerebras and SambaNova keys fail | 402 and 401 on 29/09: the fallback chain is effectively Groq → Ollama. Not re-tested here — checking it means calling the providers. |
 | `source_diversity` counts publishers | With a cap of 40, an OS linked to many small outlets scores high on diversity. 7 of the 133 OS are at or above the cap; the widest has 45 distinct publishers, the median 12. |

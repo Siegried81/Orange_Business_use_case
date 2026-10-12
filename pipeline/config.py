@@ -173,6 +173,13 @@ PORTFOLIO_DISTANCE = {
     },
 }
 RECURRING_THEME_PROMOTION_THRESHOLD = 2
+# A watchlist term (an off-taxonomy use case or technology) becomes a taxonomy
+# proposal for team review once it has been seen this many times. One constant
+# for the default of extend_taxonomy.get_terms_reaching_threshold(), the default
+# of generate_all_proposals() and the pipeline's own call: the second used to
+# default to 3 while the pipeline called it with 5. 5 is the value the pipeline
+# has always run with; it is a hand-set number, not a calibrated one.
+TAXONOMY_PROPOSAL_THRESHOLD = 5
 GOOGLE_NEWS_QUERIES = [{"vertical": v, "query": q} for v, q in VERTICAL_SEEDS.items()]
 ENABLE_GDELT = True
 _GDELT_SAFE_SUBSTITUTIONS = {"AI": "artificial intelligence", "EU": "European Union"}
