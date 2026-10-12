@@ -206,28 +206,15 @@ def cmd_calibrate(conn):
             f"\nAcross {len(spaces)} OS: signal count min={min(signal_counts)} max={max(signal_counts)} avg={sum(signal_counts) / len(signal_counts):.1f}  |  distinct sources min={min(source_counts)} max={max(source_counts)} avg={sum(source_counts) / len(source_counts):.1f}"
         )
         print(
-            "Set MARKET_SIGNAL_CAP near the high end of the linked-signal-count range (not the average -- a cap at the average would already saturate half the OS at 10/10) and SOURCE_DIVERSITY_CAP the same way, using distinct sources."
+            "MARKET_SIGNAL_CAP and SOURCE_DIVERSITY_CAP are derived from these counts by `python scripts/derive_caps.py` (same percentile as the one-keyword caps held); re-run it after changing the link rule or top_n."
         )
     current_top_n = inspect.signature(cmd_link).parameters["top_n"].default
     print(
-        f"\n=== Signals with keyword overlap > 0, per OS, BEFORE link's top_n cutoff (current top_n={current_top_n}) ==="
+        f"\n=== Signals sharing >= {MIN_KEYWORD_OVERLAP} keywords, per OS, BEFORE link's top_n cutoff (current top_n={current_top_n}) ==="
     )
     overlap_counts = []
     for os_row in spaces:
-        target_keywords = _keywords(f"{os_row['use_case']} {os_row['technology']}")
-        vertical_signals = get_signals_for_vertical(conn, os_row["vertical"])
-        vertical_signals = [
-            s
-            for s in vertical_signals
-            if (s["source_name"] or "").strip().lower() not in NON_TECH_SOURCES
-        ]
-        matching = sum(
-            (
-                1
-                for s in vertical_signals
-                if len(target_keywords & _keywords(s["title"] or "")) > 0
-            )
-        )
+        matching = len(matching_signals(conn, os_row))
         overlap_counts.append(matching)
         flag = (
             f"  <-- exceeds current top_n={current_top_n}, signals ARE being cut"
@@ -336,17 +323,48 @@ NON_TECH_SOURCES = {
 }
 
 
+# Distinct keywords a signal title must share with an OS's use case +
+# technology to be linked. A single shared word cannot tell "Natasha Cloud"
+# from cloud computing: on the hand-checked sample in
+# docs/link_sample_2026-10-12.csv, 31 of 80 single-keyword links were
+# off-topic against 3 of 40 links sharing two or more keywords. Requiring the
+# signal's vertical to match instead of a second keyword kept 13 of 40
+# off-topic links, "Natasha Cloud" among them.
+MIN_KEYWORD_OVERLAP = 2
+
+
 def _keywords(text):
     words = re.findall("[a-zA-Z]+", text.lower())
     return {w for w in words if len(w) > 2 and w not in STOPWORDS}
 
 
+def matching_signals(conn, os_row, min_overlap=None):
+    """(overlap, signal) pairs of the OS's vertical sharing >= min_overlap keywords, best first.
+
+    The one selection rule behind `link` and `calibrate`; scripts/derive_caps.py
+    replays it at another minimum to measure the link volume of either rule
+    without touching the stored links. `min_overlap` defaults to
+    MIN_KEYWORD_OVERLAP at call time.
+    """
+    min_overlap = MIN_KEYWORD_OVERLAP if min_overlap is None else min_overlap
+    target_keywords = _keywords(f"{os_row['use_case']} {os_row['technology']}")
+    scored = []
+    for s in get_signals_for_vertical(conn, os_row["vertical"]):
+        if (s["source_name"] or "").strip().lower() in NON_TECH_SOURCES:
+            continue
+        overlap = len(target_keywords & _keywords(s["title"] or ""))
+        if overlap >= min_overlap:
+            scored.append((overlap, s))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return scored
+
+
 def cmd_link(conn, top_n=56):
-    """Attach to each OS its top_n signals by keyword overlap.
+    """Attach to each OS its top_n signals sharing >= MIN_KEYWORD_OVERLAP keywords.
 
     Linking only ever adds rows, so links made before a source joined
-    NON_TECH_SOURCES are removed first; otherwise the filter would only
-    apply to new links.
+    NON_TECH_SOURCES, or under a lower keyword minimum, are removed first;
+    otherwise either filter would only apply to new links.
     """
     placeholders = ",".join("?" * len(NON_TECH_SOURCES))
     removed = conn.execute(
@@ -359,21 +377,25 @@ def cmd_link(conn, top_n=56):
     if removed:
         print(f"Removed {removed} existing link(s) to non-tech sources.\n")
     spaces = get_all_opportunity_spaces(conn)
+    weak = []
     for os_row in spaces:
         target_keywords = _keywords(f"{os_row['use_case']} {os_row['technology']}")
-        signals = get_signals_for_vertical(conn, os_row["vertical"])
-        signals = [
-            s
-            for s in signals
-            if (s["source_name"] or "").strip().lower() not in NON_TECH_SOURCES
+        weak += [
+            (os_row["id"], s["id"])
+            for s in get_linked_signals_for_opportunity_space(conn, os_row["id"])
+            if len(target_keywords & _keywords(s["title"] or "")) < MIN_KEYWORD_OVERLAP
         ]
-        scored = []
-        for s in signals:
-            overlap = len(target_keywords & _keywords(s["title"] or ""))
-            if overlap > 0:
-                scored.append((overlap, s))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        top = scored[:top_n]
+    conn.executemany(
+        "DELETE FROM opportunity_signals WHERE opportunity_space_id = ? AND signal_id = ?",
+        weak,
+    )
+    conn.commit()
+    if weak:
+        print(
+            f"Removed {len(weak)} existing link(s) sharing fewer than {MIN_KEYWORD_OVERLAP} keywords.\n"
+        )
+    for os_row in spaces:
+        top = matching_signals(conn, os_row)[:top_n]
         for _, s in top:
             link_signal_to_opportunity(conn, os_row["id"], s["id"])
         print(
@@ -382,7 +404,9 @@ def cmd_link(conn, top_n=56):
         for overlap, s in top:
             print(f"  [{overlap} kw match] ({s['source_name']}) {s['title']}")
         if not top:
-            print("  -- no keyword overlap found, this OS has no grounded evidence yet")
+            print(
+                f"  -- no signal shares {MIN_KEYWORD_OVERLAP} keywords, this OS has no grounded evidence yet"
+            )
         print()
 
 

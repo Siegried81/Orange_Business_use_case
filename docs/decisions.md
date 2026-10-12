@@ -201,3 +201,180 @@ revisit it. Append only — never rewrite a past entry.
   `wipe` resets the id sequence.
 - **Revisit if:** the history grows large enough to matter (one row per OS per
   scoring run), or the dashboard starts showing a score's evolution.
+
+## 2026-10-12 — One taxonomy proposal threshold: 5
+
+- **What:** `pipeline/config.py::TAXONOMY_PROPOSAL_THRESHOLD = 5`, read by the
+  defaults of `extend_taxonomy.get_terms_reaching_threshold()` and
+  `generate_all_proposals()` and by the call in `run_extend_taxonomy()`.
+- **Why:** `generate_all_proposals()` defaulted to 3 while the pipeline called
+  it with 5 (and `get_terms_reaching_threshold()` defaulted to 5): a caller
+  relying on the default would have proposed 33 terms from the committed
+  `radar.db` instead of 8.
+- **What changes in the numbers:** nothing. 5 is the value the pipeline's only
+  call already used; no code path called the function with its old default.
+  Only a future call without a threshold now gets 5 instead of 3.
+- **Revisit if:** the threshold is calibrated, which is a team decision; it is
+  now one line to change.
+
+## 2026-10-12 — `link` requires 2 shared keywords
+
+- **What:** `radar_cli.py::MIN_KEYWORD_OVERLAP = 2`. `link` only links a signal
+  whose title shares at least 2 distinct keywords with the OS's use case +
+  technology, and first removes existing links below that minimum (for the OS
+  they are weak for only, as it already did for `NON_TECH_SOURCES`).
+  `calibrate` counts matching signals with the same minimum.
+- **Why:** one shared word linked "Natasha Cloud" (a basketball player) to two
+  Cloud OS. Two rules were measured against a seeded sample of 120 committed
+  links, hand-labelled (`docs/link_sample_2026-10-12.csv`: 40 per stratum,
+  `random.Random(20261012)`; on-topic = a reader of that OS would accept the
+  article as evidence about its technology or its use case; off-topic = the
+  word in another sense, or unrelated beyond the shared word):
+
+  | Stratum (committed links) | Links | Off-topic in sample |
+  |---|---|---|
+  | 1 keyword, signal vertical = OS vertical | 1,698 | 13 / 40 |
+  | 1 keyword, other | 1,152 | 18 / 40 |
+  | 2+ keywords | 469 | 3 / 40 |
+
+  "2 keywords" keeps only the last stratum; "1 keyword + same vertical" also
+  keeps the first, with a third of it off-topic and the Natasha Cloud links
+  in it (their signals carry the OS's vertical). The 2-keyword rule leaves
+  fewer off-topic links, so it was chosen.
+- **Changes the numbers:** re-linking a copy of the committed database, links
+  3,319 -> 469 (the alternative rule: 2,223). Extrapolated from the sample,
+  about 1,070 off-topic links disappear and about 1,780 legitimate ones are
+  lost. 32 of 133 OS end with no link at all, OS020 (top attractiveness, 9.19)
+  among them; the median OS keeps 2 signals and the widest 37, so none
+  reaches `MARKET_SIGNAL_CAP` 56 and market signal strength tops out at 6.6.
+  Re-scoring will drop the attractiveness of every OS that lost signals.
+  `docs/calibrate_output.txt` is regenerated on the relinked copy. The
+  committed `radar.db` keeps the old links until `link` and scoring are re-run.
+- **Revisit if:** the 32 OS without evidence matter more than the off-topic
+  links -- most of them repeat one generic word in use case and technology
+  ("Cloud Infrastructure Modernization x Cloud"), so a minimum relative to the
+  OS's own keyword count, or matching on the signal summary too, would recover
+  them. `MARKET_SIGNAL_CAP` (56) was set for the old link counts and should be
+  re-derived from the new ones.
+
+## 2026-10-12 — Attractiveness weights from the AHP sheet
+
+- **What:** `pipeline/ahp.py` reads the upper triangle of
+  `pipeline/ahp_weights.xlsx`, rebuilds the reciprocal matrix, and computes the
+  priority vector (normalised row geometric means, the sheet's own method) and
+  the consistency ratio (Saaty RI, 1.12 for 5 criteria); it refuses judgments
+  with CR >= 0.10. `pipeline/scoring.py` has two named weightings, `ahp` (the
+  default, `WEIGHTING`) and `manual` (the hand-set 30/20/25/10/15), and
+  `python -m pipeline.scoring --weights=manual` selects the latter for a run.
+  The sheet moved from `tests/` to `pipeline/` because the Docker image, which
+  runs the pipeline, excludes `tests/`; `openpyxl==3.1.5` joins
+  `requirements.txt` to read it.
+- **Why:** the weights were a hand choice; the sheet held the team's pairwise
+  judgments but nothing read it.
+- **Changes the numbers:** weights market/evidence/diversity/relevance/novelty
+  go from 30/25/20/15/10 to 39.7/27.8/14.1/13.0/5.5 (CR 0.021; the principal
+  eigenvector agrees within 0.2 points). Re-totalled from the stored
+  sub-scores of all 133 OS on the committed database: the top 15 keep the same
+  members, with 4 adjacent swaps (OS013 5th / OS001 4th, OS134 11th -> 9th,
+  OS029 9th -> 10th, OS017 12th -> 11th, OS014 10th -> 12th); 103 OS change
+  rank, by at most 11 places; totals move by at most 0.42; quadrants
+  strong/needs capability/moderate/low 16/5/77/35 -> 19/5/74/35 (OS034, OS065,
+  OS108 become strong; OS073 low -> needs capability; OS002 needs capability
+  -> low). The committed `radar.db` keeps the manual-weight totals until
+  scoring is re-run; `scoring --refresh` re-totals without calling the LLM.
+- **Revisit if:** outcome data (won/lost opportunities) becomes available --
+  AHP makes judgments consistent, it does not validate them. Changing a
+  judgment means editing the yellow cells of the sheet; the code recomputes
+  and re-checks CR on the next run.
+
+## 2026-10-12 — Right-to-win reference bonus stays hand-set, now a named parameter
+
+- **What:** the bonus is `CUSTOMER_REFERENCE_BONUS = 0.5` per named customer
+  reference in the vertical, capped at `CUSTOMER_REFERENCE_BONUS_CAP = 1.0`,
+  in `pipeline/scoring.py`; `customer_reference_bonus()` replaces
+  `crm_customer_overlap_bonus()`. `scripts/rtw_bonus_sensitivity.py` re-applies
+  other values to the stored scores and counts what moves, without the LLM.
+- **Why not fitted:** fitting needs an outcome per OS (won, lost, pursued),
+  and the radar has none: the two CRM dicts that would have held it were
+  empty and are gone, and the 18 customer references are the input of the
+  bonus, not an outcome. Any "fitted" value would be invented, so the value
+  is kept and its sensitivity published instead.
+- **Changes the numbers:** none at the default. Sensitivity on the committed
+  database (133 OS, 77 with a bonus): at 0.25 per reference 1 OS changes
+  quadrant (OS107), at 0.75 none, with no bonus 7 (all L3 OS scored 6.5 by
+  the LLM; strong 16 -> 14). The portfolio level never moves. The
+  justification now names the reference count instead of "CRM customer
+  overlap", which described data the code never read; stored justifications
+  keep the old wording until right-to-win is re-scored.
+- **Revisit if:** won/lost outcomes per OS become available -- then fit the
+  bonus (or drop it: the references are already in the prompt, so the LLM may
+  count them once already).
+
+## 2026-10-12 — Market and diversity caps re-derived for the 2-keyword links
+
+- **What:** `MARKET_SIGNAL_CAP` 56 -> 15 and `SOURCE_DIVERSITY_CAP` 40 -> 10
+  (`pipeline/scoring.py`), computed by `scripts/derive_caps.py`.
+- **What they measure:** the number of linked signals, and of distinct
+  publishers, at which market signal strength and source diversity reach 10.
+  A 10 now means 15 signals / 10 publishers instead of 56 / 40.
+- **Why:** the old caps were sized for the one-keyword links. Under the
+  2-keyword rule the widest OS has 37 signals and 28 publishers, so on the
+  first re-score (feat/rescore-12-10) no OS reached 7 on attractiveness and
+  "strong" was out of reach.
+- **Method:** keep each cap at the position the old cap held. Position =
+  mid-rank percentile in the per-OS distribution under the one-keyword rule,
+  (OS below + half the OS equal) / 133: 0.959 for 56 signals (11 OS tied at 56,
+  where `link`'s `top_n` censors the distribution) and 0.947 for 40 publishers
+  (7 OS above). New cap = inclusive quantile of the two-keyword distribution
+  at that percentile, rounded: 15.08 -> 15 and 10.11 -> 10. The p90 of the new
+  distributions (8.8 and 8.0) is the cross-check. Both distributions are
+  replayed from the signals by `radar_cli.matching_signals()`, which `link` and
+  `calibrate` now share, so the derivation does not depend on the stored
+  links. `tests/test_derive_caps.py` fails if the constants drift from it.
+- **Revisit if:** the link rule or `top_n` changes -- re-run the script.
+
+## 2026-10-12 — Cerebras dropped from the LLM chain
+
+- **What:** `_call_cerebras`, the `CEREBRAS_*` settings and the "cerebras"
+  provider mode are gone from `llm/llm_client.py`, `.env.example`, README,
+  SECURITY.md and the deep dive. The "auto" chain is Groq -> SambaNova ->
+  Ollama. Covered by `tests/test_llm_chain.py`.
+- **Why:** Cerebras's free tier now requires payment, and the key
+  answered 402 on 29/09 (not re-tested). SambaNova stays: one call on 12/10 got 429 (key
+  accepted, rate-limited; it was 401 on 29/09).
+- **Changes the numbers:** none -- no score in radar.db came from Cerebras.
+  A leftover `LLM_PROVIDER=cerebras` now runs the auto chain.
+
+## 2026-10-12 — radar.db re-linked and re-scored on the merged logic
+
+- **What:** on feat/orange-scoring-12-10 (main + taxonomy threshold, 2-keyword
+  link, AHP weights, reference-bonus parameters, re-derived caps):
+  `python radar_cli.py link`, `python -m pipeline.scoring --force` (Groq),
+  OS102 re-run alone after an intermittent refusal, then both summaries. No
+  ingest: the 4,272 signals are unchanged. The previous radar.db was the 30
+  September scoring on main.
+- **Changes the numbers:** links 3,319 -> 469 (32 OS without one); mean
+  attractiveness 5.25 -> 3.33, best 9.19 (OS020) -> 9.31 (OS033); quadrants
+  strong/needs capability/moderate/low 16/5/77/35 -> 6/2/85/40 (also 6 strong
+  with the 30 September right-to-win kept, so the change is attractiveness).
+  Strong now: OS013, OS014, OS028, OS033, OS049, OS114. Top 15: 8 left
+  (OS017, OS020, OS023, OS082, OS087, OS093, OS097, OS134), 8 entered (OS026,
+  OS036, OS046, OS049, OS078, OS107, OS114, OS119). Largest falls: OS020
+  9.19 -> 1.04 and OS083 7.59 -> 0.26 (no link left); largest rises: OS114
+  4.83 -> 7.95, OS049 6.15 -> 8.28. Right-to-win levels changed for 29 OS
+  (23 between L1 and L3) with nothing feeding right-to-win changed:
+  run-to-run LLM variance, now measurable from `right_to_win_history`.
+  Urgency scaling point 3.68 -> 1.75.
+- **Left on an old sub-score:** OS106. Groq answers its evidence-quality
+  prompt with one JSON object per source on every try (Ollama failed too), so
+  its evidence quality (4.0) and strategic relevance (5.5) are the 30
+  September values; its deterministic sub-scores and total (4.35) were
+  refreshed. The prompt asks for one object clearly, so it was not reworded:
+  that would move every OS's evidence score.
+- **History:** this is the first scoring run since `score_history` existed, so
+  radar.db now holds the tables: 133 baseline rows (30 September) plus 665
+  attractiveness and 136 right-to-win writes. The committed-database check in
+  `tests/test_score_history.py` assumed no history yet; it now covers both states.
+- **Revisit if:** the 32 OS without a link matter (see the link entry), or
+  OS106's evidence call starts answering in schema -- `python -m
+  pipeline.scoring --force --from=OS106 --to=OS106`.
