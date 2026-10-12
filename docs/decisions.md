@@ -175,3 +175,29 @@ revisit it. Append only — never rewrite a past entry.
   repair is idempotent and a healthy database is left alone.
 - **Revisit if:** a future migration renames a parent table — set
   `PRAGMA legacy_alter_table = ON` around the rename, or run the repair after.
+
+## 2026-10-12 — Score history kept next to the current score
+
+- **What:** two append-only tables, `score_history` and `right_to_win_history`
+  (`HISTORY_SCHEMA`, `pipeline/db.py`). `insert_score()` and
+  `insert_right_to_win_score()` still update one current row per opportunity
+  space, and now also append a copy of each accepted write, in the same
+  transaction. The tables are created on the first score write (or by
+  `init_db()`) and seeded once with the current rows, marked `baseline`.
+- **Relation to 2026-09-29:** that entry stands for `scores` and
+  `right_to_win_scores` — still one row each, still what every read uses. It
+  rejected history because nothing read it; the right-to-win instability
+  (§8 of the deep dive: 38 of 133 OS moved level between two runs) is now a
+  question that needs it, and an extra table answers it without touching the
+  four places that assume one row.
+- **What changes in the numbers:** nothing. No score, quadrant, summary or
+  export reads the history; latest-score reads on a copy of the committed
+  `radar.db` are identical before and after the tables are created
+  (`tests/test_score_history.py`). The committed `radar.db` is not modified in
+  this change; it gains the tables on its next scoring run.
+- **No foreign key on the history:** with foreign keys on, a reference would
+  make every delete of an opportunity space fail, and a history should
+  outlive the space anyway. Label and triple are stored with each row because
+  `wipe` resets the id sequence.
+- **Revisit if:** the history grows large enough to matter (one row per OS per
+  scoring run), or the dashboard starts showing a score's evolution.
