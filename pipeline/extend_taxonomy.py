@@ -2,6 +2,7 @@ from datetime import datetime
 import json
 import os
 from pipeline.taxonomy_validation import is_generic_taxonomy_term
+from pipeline.config import TAXONOMY_PROPOSAL_THRESHOLD
 from pipeline.db import get_connection
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,7 +27,8 @@ def init_proposals_table(conn):
     conn.commit()
 
 
-def get_terms_reaching_threshold(conn, threshold=5):
+def get_terms_reaching_threshold(conn, threshold=TAXONOMY_PROPOSAL_THRESHOLD):
+    """Watchlist terms seen at least `threshold` times, most frequent first."""
     rows = conn.execute(
         "SELECT vertical, term, category, frequency, first_seen, last_seen\n           FROM watchlist_terms\n           WHERE frequency >= ?\n           ORDER BY frequency DESC",
         (threshold,),
@@ -72,7 +74,13 @@ def generate_proposal(conn, term, run_id=None):
     return "inserted"
 
 
-def generate_all_proposals(conn, threshold=3, run_id=None):
+def generate_all_proposals(conn, threshold=TAXONOMY_PROPOSAL_THRESHOLD, run_id=None):
+    """Turn every watchlist term at or above `threshold` into a pending proposal.
+
+    Returns (inserted, already existing). The default is the pipeline's own
+    value (config.TAXONOMY_PROPOSAL_THRESHOLD), so a call without a threshold
+    proposes the same terms as `python -m pipeline.extend_taxonomy`.
+    """
     terms = get_terms_reaching_threshold(conn, threshold)
     inserted = 0
     exists = 0
@@ -187,7 +195,7 @@ def run_review(conn):
 def run_extend_taxonomy(run_id=None):
     conn = get_connection()
     init_proposals_table(conn)
-    inserted, exists = generate_all_proposals(conn, threshold=5, run_id=run_id)
+    inserted, exists = generate_all_proposals(conn, threshold=TAXONOMY_PROPOSAL_THRESHOLD, run_id=run_id)
     print("[OK] Extend taxonomy complete:")
     print(f"   New proposals: {inserted}")
     print(f"   Already exists: {exists}")
