@@ -63,8 +63,14 @@ def attractiveness_weights(name=WEIGHTING):
 
 
 WEIGHTS = attractiveness_weights()
-MARKET_SIGNAL_CAP = 56
-SOURCE_DIVERSITY_CAP = 40
+# Counts at which market signal strength and source diversity reach 10.
+# They depend on how many signals `link` keeps per OS, so they are derived
+# from the link volume by scripts/derive_caps.py: each cap keeps the
+# percentile the one-keyword caps (56, 40) held under the one-keyword rule,
+# taken in the distribution of the current two-keyword rule. Re-run it
+# whenever the link rule or top_n changes.
+MARKET_SIGNAL_CAP = 15
+SOURCE_DIVERSITY_CAP = 10
 EVIDENCE_QUALITY_MAX_SIGNALS = 15
 ENRICHMENT_SAMPLE_SIZE = 10
 
