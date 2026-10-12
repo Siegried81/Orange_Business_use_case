@@ -175,3 +175,18 @@ revisit it. Append only — never rewrite a past entry.
   repair is idempotent and a healthy database is left alone.
 - **Revisit if:** a future migration renames a parent table — set
   `PRAGMA legacy_alter_table = ON` around the rename, or run the repair after.
+
+## 2026-10-12 — One taxonomy proposal threshold: 5
+
+- **What:** `pipeline/config.py::TAXONOMY_PROPOSAL_THRESHOLD = 5`, read by the
+  defaults of `extend_taxonomy.get_terms_reaching_threshold()` and
+  `generate_all_proposals()` and by the call in `run_extend_taxonomy()`.
+- **Why:** `generate_all_proposals()` defaulted to 3 while the pipeline called
+  it with 5 (and `get_terms_reaching_threshold()` defaulted to 5): a caller
+  relying on the default would have proposed 33 terms from the committed
+  `radar.db` instead of 8.
+- **What changes in the numbers:** nothing. 5 is the value the pipeline's only
+  call already used; no code path called the function with its old default.
+  Only a future call without a threshold now gets 5 instead of 3.
+- **Revisit if:** the threshold is calibrated, which is a team decision; it is
+  now one line to change.
