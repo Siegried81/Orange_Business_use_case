@@ -309,3 +309,72 @@ revisit it. Append only — never rewrite a past entry.
 - **Revisit if:** won/lost outcomes per OS become available -- then fit the
   bonus (or drop it: the references are already in the prompt, so the LLM may
   count them once already).
+
+## 2026-10-12 — Market and diversity caps re-derived for the 2-keyword links
+
+- **What:** `MARKET_SIGNAL_CAP` 56 -> 15 and `SOURCE_DIVERSITY_CAP` 40 -> 10
+  (`pipeline/scoring.py`), computed by `scripts/derive_caps.py`.
+- **What they measure:** the number of linked signals, and of distinct
+  publishers, at which market signal strength and source diversity reach 10.
+  A 10 now means 15 signals / 10 publishers instead of 56 / 40.
+- **Why:** the old caps were sized for the one-keyword links. Under the
+  2-keyword rule the widest OS has 37 signals and 28 publishers, so on the
+  first re-score (feat/rescore-12-10) no OS reached 7 on attractiveness and
+  "strong" was out of reach.
+- **Method:** keep each cap at the position the old cap held. Position =
+  mid-rank percentile in the per-OS distribution under the one-keyword rule,
+  (OS below + half the OS equal) / 133: 0.959 for 56 signals (11 OS tied at 56,
+  where `link`'s `top_n` censors the distribution) and 0.947 for 40 publishers
+  (7 OS above). New cap = inclusive quantile of the two-keyword distribution
+  at that percentile, rounded: 15.08 -> 15 and 10.11 -> 10. The p90 of the new
+  distributions (8.8 and 8.0) is the cross-check. Both distributions are
+  replayed from the signals by `radar_cli.matching_signals()`, which `link` and
+  `calibrate` now share, so the derivation does not depend on the stored
+  links. `tests/test_derive_caps.py` fails if the constants drift from it.
+- **Revisit if:** the link rule or `top_n` changes -- re-run the script.
+
+## 2026-10-12 — Cerebras dropped from the LLM chain
+
+- **What:** `_call_cerebras`, the `CEREBRAS_*` settings and the "cerebras"
+  provider mode are gone from `llm/llm_client.py`, `.env.example`, README,
+  SECURITY.md and the deep dive. The "auto" chain is Groq -> SambaNova ->
+  Ollama. Covered by `tests/test_llm_chain.py`.
+- **Why:** Cerebras's free tier now requires payment, and the key
+  answered 402 on 29/09 (not re-tested). SambaNova stays: one call on 12/10 got 429 (key
+  accepted, rate-limited; it was 401 on 29/09).
+- **Changes the numbers:** none -- no score in radar.db came from Cerebras.
+  A leftover `LLM_PROVIDER=cerebras` now runs the auto chain.
+
+## 2026-10-12 — radar.db re-linked and re-scored on the merged logic
+
+- **What:** on feat/orange-scoring-12-10 (main + taxonomy threshold, 2-keyword
+  link, AHP weights, reference-bonus parameters, re-derived caps):
+  `python radar_cli.py link`, `python -m pipeline.scoring --force` (Groq),
+  OS102 re-run alone after an intermittent refusal, then both summaries. No
+  ingest: the 4,272 signals are unchanged. The previous radar.db was the 30
+  September scoring on main.
+- **Changes the numbers:** links 3,319 -> 469 (32 OS without one); mean
+  attractiveness 5.25 -> 3.33, best 9.19 (OS020) -> 9.31 (OS033); quadrants
+  strong/needs capability/moderate/low 16/5/77/35 -> 6/2/85/40 (also 6 strong
+  with the 30 September right-to-win kept, so the change is attractiveness).
+  Strong now: OS013, OS014, OS028, OS033, OS049, OS114. Top 15: 8 left
+  (OS017, OS020, OS023, OS082, OS087, OS093, OS097, OS134), 8 entered (OS026,
+  OS036, OS046, OS049, OS078, OS107, OS114, OS119). Largest falls: OS020
+  9.19 -> 1.04 and OS083 7.59 -> 0.26 (no link left); largest rises: OS114
+  4.83 -> 7.95, OS049 6.15 -> 8.28. Right-to-win levels changed for 29 OS
+  (23 between L1 and L3) with nothing feeding right-to-win changed:
+  run-to-run LLM variance, now measurable from `right_to_win_history`.
+  Urgency scaling point 3.68 -> 1.75.
+- **Left on an old sub-score:** OS106. Groq answers its evidence-quality
+  prompt with one JSON object per source on every try (Ollama failed too), so
+  its evidence quality (4.0) and strategic relevance (5.5) are the 30
+  September values; its deterministic sub-scores and total (4.35) were
+  refreshed. The prompt asks for one object clearly, so it was not reworded:
+  that would move every OS's evidence score.
+- **History:** this is the first scoring run since `score_history` existed, so
+  radar.db now holds the tables: 133 baseline rows (30 September) plus 665
+  attractiveness and 136 right-to-win writes. The committed-database check in
+  `tests/test_score_history.py` assumed no history yet; it now covers both states.
+- **Revisit if:** the 32 OS without a link matter (see the link entry), or
+  OS106's evidence call starts answering in schema -- `python -m
+  pipeline.scoring --force --from=OS106 --to=OS106`.

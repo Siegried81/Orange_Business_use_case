@@ -158,7 +158,7 @@ OS134    Public Sector                  6                4
 OS135    Construction                   0                0                 
 
 Across 133 OS: signal count min=0 max=37 avg=3.5  |  distinct sources min=0 max=28 avg=2.9
-Set MARKET_SIGNAL_CAP near the high end of the linked-signal-count range (not the average -- a cap at the average would already saturate half the OS at 10/10) and SOURCE_DIVERSITY_CAP the same way, using distinct sources.
+MARKET_SIGNAL_CAP and SOURCE_DIVERSITY_CAP are derived from these counts by `python scripts/derive_caps.py` (same percentile as the one-keyword caps held); re-run it after changing the link rule or top_n.
 
 === Signals sharing >= 2 keywords, per OS, BEFORE link's top_n cutoff (current top_n=56) ===
 OS001    Public Sector                  37              
