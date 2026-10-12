@@ -135,8 +135,18 @@ def test_on_the_committed_database_reads_are_unchanged(tmp_path):
     before = [tuple(r) for r in get_latest_scores(c)]
     n_scores = c.execute("SELECT COUNT(*) FROM scores").fetchone()[0]
     n_rtw = c.execute("SELECT COUNT(*) FROM right_to_win_scores").fetchone()[0]
-    assert sorted(ensure_history_tables(c)) == ["right_to_win_history", "score_history"]
+    had_history = bool(get_score_history(c))
+    created = ensure_history_tables(c)
     assert [tuple(r) for r in get_latest_scores(c)] == before
-    assert len(get_score_history(c)) == n_scores
-    assert len(get_score_history(c, kind="right_to_win")) == n_rtw
-    assert {r["origin"] for r in get_score_history(c)} == {"baseline"}
+    if had_history:
+        # A database scored since history existed: nothing to create, and the
+        # first rows are the one-time baseline, one per scored OS.
+        assert created == []
+        baseline = [r for r in get_score_history(c) if r["origin"] == "baseline"]
+        assert len(baseline) == n_scores
+        assert len(get_score_history(c, kind="right_to_win")) >= n_rtw
+    else:
+        assert sorted(created) == ["right_to_win_history", "score_history"]
+        assert len(get_score_history(c)) == n_scores
+        assert len(get_score_history(c, kind="right_to_win")) == n_rtw
+        assert {r["origin"] for r in get_score_history(c)} == {"baseline"}

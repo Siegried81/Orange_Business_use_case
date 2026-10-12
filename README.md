@@ -57,12 +57,15 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_network_guard.py     # the socket guard in conftest.py
 │   ├── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
 │   ├── test_ahp_weights.py       # AHP weights, consistency ratio, manual option
-│   └── test_rtw_bonus.py         # right-to-win customer-reference bonus and its sensitivity
+│   ├── test_rtw_bonus.py         # right-to-win customer-reference bonus and its sensitivity
+│   ├── test_derive_caps.py       # market/diversity caps derived from the link volume
+│   └── test_llm_chain.py         # provider chain Groq -> SambaNova -> Ollama
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
 │   ├── check_healthcare.py       # vertical diagnostic query
-│   └── rtw_bonus_sensitivity.py  # what moves if the right-to-win customer-reference bonus changes
+│   ├── rtw_bonus_sensitivity.py  # what moves if the right-to-win customer-reference bonus changes
+│   └── derive_caps.py            # re-derives MARKET_SIGNAL_CAP / SOURCE_DIVERSITY_CAP from the link volume
 ├── docs/
 │   ├── decisions.md              # dated decision log
 │   └── technical_deep_dive.md    # score formulas, modules, bugs fixed, open issues
@@ -103,7 +106,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 173 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 187 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
