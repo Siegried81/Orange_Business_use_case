@@ -216,3 +216,43 @@ revisit it. Append only — never rewrite a past entry.
   Only a future call without a threshold now gets 5 instead of 3.
 - **Revisit if:** the threshold is calibrated, which is a team decision; it is
   now one line to change.
+
+## 2026-10-12 — `link` requires 2 shared keywords
+
+- **What:** `radar_cli.py::MIN_KEYWORD_OVERLAP = 2`. `link` only links a signal
+  whose title shares at least 2 distinct keywords with the OS's use case +
+  technology, and first removes existing links below that minimum (for the OS
+  they are weak for only, as it already did for `NON_TECH_SOURCES`).
+  `calibrate` counts matching signals with the same minimum.
+- **Why:** one shared word linked "Natasha Cloud" (a basketball player) to two
+  Cloud OS. Two rules were measured against a seeded sample of 120 committed
+  links, hand-labelled (`docs/link_sample_2026-10-12.csv`: 40 per stratum,
+  `random.Random(20261012)`; on-topic = a reader of that OS would accept the
+  article as evidence about its technology or its use case; off-topic = the
+  word in another sense, or unrelated beyond the shared word):
+
+  | Stratum (committed links) | Links | Off-topic in sample |
+  |---|---|---|
+  | 1 keyword, signal vertical = OS vertical | 1,698 | 13 / 40 |
+  | 1 keyword, other | 1,152 | 18 / 40 |
+  | 2+ keywords | 469 | 3 / 40 |
+
+  "2 keywords" keeps only the last stratum; "1 keyword + same vertical" also
+  keeps the first, with a third of it off-topic and the Natasha Cloud links
+  in it (their signals carry the OS's vertical). The 2-keyword rule leaves
+  fewer off-topic links, so it was chosen.
+- **Changes the numbers:** re-linking a copy of the committed database, links
+  3,319 -> 469 (the alternative rule: 2,223). Extrapolated from the sample,
+  about 1,070 off-topic links disappear and about 1,780 legitimate ones are
+  lost. 32 of 133 OS end with no link at all, OS020 (top attractiveness, 9.19)
+  among them; the median OS keeps 2 signals and the widest 37, so none
+  reaches `MARKET_SIGNAL_CAP` 56 and market signal strength tops out at 6.6.
+  Re-scoring will drop the attractiveness of every OS that lost signals.
+  `docs/calibrate_output.txt` is regenerated on the relinked copy. The
+  committed `radar.db` keeps the old links until `link` and scoring are re-run.
+- **Revisit if:** the 32 OS without evidence matter more than the off-topic
+  links -- most of them repeat one generic word in use case and technology
+  ("Cloud Infrastructure Modernization x Cloud"), so a minimum relative to the
+  OS's own keyword count, or matching on the signal summary too, would recover
+  them. `MARKET_SIGNAL_CAP` (56) was set for the old link counts and should be
+  re-derived from the new ones.
