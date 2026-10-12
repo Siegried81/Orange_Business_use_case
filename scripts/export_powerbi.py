@@ -61,7 +61,9 @@ LATEST_SCORES_SQL = """
            s.urgency_score, s.total_score, s.computed_at,
            r.id AS right_to_win_id, r.portfolio_distance, r.right_to_win_score,
            r.matched_assets, r.justification,
-           r.computed_at AS right_to_win_computed_at
+           r.computed_at AS right_to_win_computed_at,
+           (SELECT COUNT(*) FROM opportunity_signals l
+            WHERE l.opportunity_space_id = os.id) AS linked_signals
     FROM opportunity_spaces os
     JOIN scores s ON s.id = (
         SELECT id FROM scores WHERE opportunity_space_id = os.id
