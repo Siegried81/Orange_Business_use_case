@@ -5,9 +5,9 @@ Opportunity Space, what every score formula actually measures, which parts are a
 LLM judgment and which are arithmetic, and the defects that shaped the code.
 
 Figures come from `radar.db` — signals collected up to 30 August 2026, scored on
-30 September 2026 — and from a real run of the test suite on 5 October 2026, not
-from memory. `radar.db` is not versioned, so they describe that database, not
-whatever a fresh clone would produce. Where a figure could only be obtained by
+30 September 2026 — and from a real run of the test suite on 12 October 2026, not
+from memory. `radar.db` is committed as a snapshot (§8), so they describe that
+database, not whatever a fresh pipeline run would produce. Where a figure could only be obtained by
 calling the LLM again it is marked as measured on an earlier run and not
 re-verified. The dated reasoning behind each change lives in
 [`decisions.md`](decisions.md).
@@ -164,7 +164,7 @@ A missing score yields no quadrant rather than "low".
 | `pipeline/extend_taxonomy.py` | 204 | Watchlist term → proposal once frequency ≥ 5. |
 | `pipeline/taxonomy_validation.py` | 6 | Rejects bare generic terms ("AI") while keeping compounds ("Generative AI"). |
 | `pipeline/scoring.py` | 837 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
-| `pipeline/db.py` | 564 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker. |
+| `pipeline/db.py` | 757 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker, foreign-key repair, append-only score history. |
 | `llm/llm_client.py` | 271 | Provider chain, Groq key rotation, JSON extraction. |
 | `radar_cli.py` | 643 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
 | `app/streamlit_app.py` | 691 | Polar radar and bubble views, sidebar filters (vertical, domain, horizon, owning team, buyer persona, geography), per-OS breakdown and next actions per role. |
@@ -174,12 +174,27 @@ A missing score yields no quadrant rather than "low".
 
 ### Data model
 
-Eight tables. `signals` is deduplicated on `(source_url, title)`.
-`opportunity_spaces` carries the triple, the enrichment fields and a unique label;
-`opportunity_signals` is the many-to-many link. `scores` and `right_to_win_scores`
-hold **one current row per OS**: `insert_score()` updates in place, so there is no
-score history (decided 29/09, `decisions.md`). `watchlist_terms`, `recurring_themes`
-and `proposals` drive taxonomy growth.
+Eight tables in `SCHEMA`, plus two history tables. `signals` is deduplicated on
+`(source_url, title)`. `opportunity_spaces` carries the triple, the enrichment
+fields and a unique label; `opportunity_signals` is the many-to-many link.
+`scores` and `right_to_win_scores` hold **one current row per OS**:
+`insert_score()` and `insert_right_to_win_score()` update in place (decided 29/09,
+`decisions.md`), and every read of a score reads those. `watchlist_terms`,
+`recurring_themes` and `proposals` drive taxonomy growth.
+
+**Score history** (`score_history`, `right_to_win_history`, `HISTORY_SCHEMA` in
+`pipeline/db.py`, added 12/10). Every accepted write is also appended, in the
+same transaction, as a copy of the row just written, with the OS label and triple
+(`wipe` resets the id sequence, so an id alone can be reused) and
+`origin = 'write'`. A write refused by the fallback guard (§6.11) leaves no
+history row. The tables are created by `ensure_history_tables()` on the first
+score write or by `init_db()`, and seeded once with the current rows as
+`origin = 'baseline'`, so the first rescore after the upgrade already has a
+previous value to compare with. They carry no foreign key: a history outlives the
+deletion of its OS, and no delete path has to change. Nothing reads them yet
+except `get_score_history()`; no number on the dashboard or in the summaries
+comes from them. The committed `radar.db` does not contain them yet: they appear
+on its next scoring run.
 
 ---
 
@@ -214,7 +229,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-128 tests, all passing on 5 October 2026, no network (`python -m pytest`, a few
+144 tests, all passing on 12 October 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -226,9 +241,13 @@ reaching the internet.
 | `tests/test_export_powerbi.py` | 17 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB. |
 | `tests/test_scoring_and_db.py` | 54 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants, summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, and the refusal to overwrite a real score with a fallback. |
 | `tests/test_dashboard.py` | 14 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, each tab opened exactly once, an all-NaN top-opportunity selection, and which `source_url` values become links. |
+| `tests/test_score_history.py` | 8 | Score history: every accepted write appended while `scores` keeps one row, a refused fallback leaves no trace, right-to-win history, the one-time baseline, history surviving a deleted OS, `init_db()` on a new database, and latest-score reads unchanged on a copy of the committed `radar.db`. |
+| `tests/test_foreign_keys.py` | 4 | The replayed migration that left child tables pointing at a dropped parent, the repair, foreign keys on every connection, no violation left in a copy of `radar.db`. |
+| `tests/test_network_guard.py` | 4 | The socket block itself. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
-monkeypatched at `scoring.get_llm_json`). There is no CI; the suite is run by hand.
+monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`)
+runs the suite on Python 3.12 on every push.
 
 ---
 
@@ -353,5 +372,5 @@ temperature 0, which makes repeated calls close, not identical.
 | Cerebras and SambaNova keys fail | 402 and 401 on 29/09: the fallback chain is effectively Groq → Ollama. Not re-tested here — checking it means calling the providers. |
 | `source_diversity` counts publishers | With a cap of 40, an OS linked to many small outlets scores high on diversity. 7 of the 133 OS are at or above the cap; the widest has 45 distinct publishers, the median 12. |
 | Power BI refresh path | Power Query has no relative file paths, so the `DataFolder` parameter is an absolute path to one machine; `export_powerbi.py` now warns and prints the right value when it does not match. The CSV export must be re-run by hand after each pipeline run. The quadrant threshold 7 is restated in the model instead of read from `STRONG_THRESHOLD`. |
-| Right-to-win is not stable across runs | Two scoring runs on the same linked signals (29/09 and 30/09) moved 38 of 133 OS to another level, 30 of them between L1 and L3. The top 15 by attractiveness kept the same members, in a different order. **Measured on those two runs and not re-verified**: `insert_score()` updates in place, so the database keeps no score history to compare, and a fresh comparison means a second LLM run. |
+| Right-to-win is not stable across runs | Two scoring runs on the same linked signals (29/09 and 30/09) moved 38 of 133 OS to another level, 30 of them between L1 and L3. The top 15 by attractiveness kept the same members, in a different order. **Measured on those two runs and not re-verified.** Since 12/10 every score write is kept in `score_history` / `right_to_win_history` (§3), so the next two scoring runs can be compared from the database; that still means two LLM runs, and none has been made. |
 | Dependencies pinned, except Streamlit | `requirements.txt` pins exact versions for the other eight packages; `streamlit>=1.49` is a floor because Streamlit Cloud upgrades its own runtime. A pin is the version the project was tested against, not a version anyone validated as the best. |

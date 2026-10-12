@@ -46,6 +46,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
+│   ├── test_score_history.py     # every score write kept in the history tables, current reads unchanged
 │   └── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
@@ -90,7 +91,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 136 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 144 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
@@ -124,7 +125,7 @@ every push.
 
 - **LLM reliability**: the local Ollama fallback (used when Groq, Cerebras and SambaNova all fail) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
 - **Calibration on a moving dataset**: the urgency scale is re-derived on every run from the 95th percentile of the live opportunity-space population rather than hardcoded, since the dataset kept growing (133 spaces today) as sources came online. `radar_cli.py calibrate` prints signal-count percentiles to help choose how many signals `link` keeps per space. Near-duplicate signal detection still uses a fixed 0.85 similarity.
-- **Data correctness under concurrency**: SQLite timestamp collisions (two scores inserted milliseconds apart on the same machine) could silently pick the wrong "latest" score; the latest-score queries in `pipeline/db.py` use a deterministic tiebreaker (`id DESC`), and `insert_score()` updates each opportunity space's row in place, so there is one current score per space rather than a history.
+- **Data correctness under concurrency**: SQLite timestamp collisions (two scores inserted milliseconds apart on the same machine) could silently pick the wrong "latest" score; the latest-score queries in `pipeline/db.py` use a deterministic tiebreaker (`id DESC`), and `insert_score()` updates each opportunity space's row in place, so there is one current score per space; every accepted write is also appended to `score_history` / `right_to_win_history`, so successive runs can be compared without changing what the radar reads.
 
 ## Tech stack
 
