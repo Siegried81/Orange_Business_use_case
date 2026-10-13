@@ -98,6 +98,22 @@ def _start_logging():
     return (log_path, log_file, original_stdout)
 
 
+# feedparser.parse(url) downloads with urllib and no timeout, so one feed
+# server that accepts the connection but never answers hangs the whole ingest
+# run forever. Download with requests (bounded by a timeout, like every other
+# source here) and hand feedparser only the bytes. A timeout or connection
+# error raises and is reported by safe_run as that one source failing.
+FEED_TIMEOUT_SECONDS = 20
+
+
+def _parse_feed(url):
+    # Same User-Agent feedparser sent itself, so feed servers see no change.
+    resp = requests.get(
+        url, headers={"User-Agent": feedparser.USER_AGENT}, timeout=FEED_TIMEOUT_SECONDS
+    )
+    return feedparser.parse(resp.content)
+
+
 def fetch_google_news(
     conn, vertical, query, signal_type="market_move", max_items=15, source_name=None
 ):
@@ -108,7 +124,7 @@ def fetch_google_news(
     instead of as the name of whichever site mirrors the document.
     """
     url = "https://news.google.com/rss/search?q=" + urllib.parse.quote(query) + "&hl=en"
-    feed = feedparser.parse(url)
+    feed = _parse_feed(url)
     count = 0
     for entry in feed.entries[:max_items]:
         added = insert_signal(
@@ -206,7 +222,7 @@ def fetch_gdelt(
 def fetch_vendor_feed(
     conn, name, url, vertical_hint=None, signal_type="tech_maturity", max_items=10
 ):
-    feed = feedparser.parse(url)
+    feed = _parse_feed(url)
     count = 0
     for entry in feed.entries[:max_items]:
         added = insert_signal(
@@ -258,7 +274,7 @@ def fetch_arxiv(conn, vertical, query, signal_type="proof_signal", max_results=1
         "max_results": max_results,
     }
     url = ARXIV_API_URL + "?" + urllib.parse.urlencode(params)
-    feed = feedparser.parse(url)
+    feed = _parse_feed(url)
     count = 0
     for entry in feed.entries:
         added = insert_signal(
