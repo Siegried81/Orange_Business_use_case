@@ -28,8 +28,8 @@
     Restore with: git clone <file>.bundle restored-repo
   - `git pull --ff-only` refuses to create merge commits: if local main has
     diverged from GitHub, the repo is reported instead of silently merged.
-  - Images are only BUILT by default. Most of these apps listen on 8501, so
-    starting them all at once would make every compose project but one fail.
+  - Images are only BUILT by default. Each app publishes its own host port,
+    but running every one at once costs several GB of RAM: start what you need.
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Root,   # folder holding the clones
