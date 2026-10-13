@@ -123,7 +123,7 @@ the value to use when it does not match.
 ## Deploying
 
 - **Docker**: `docker compose up --build` serves the dashboard on
-  http://localhost:8501 with the host's `radar.db` mounted in, and
+  http://localhost:8505 with the host's `radar.db` mounted in, and
   `docker compose run --rm dashboard python radar_cli.py all` runs the
   pipeline in the same image with the keys from `.env`.
 - **Render**: `render.yaml` deploys the same image as a free web service

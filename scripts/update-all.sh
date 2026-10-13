@@ -13,8 +13,8 @@
 #   do not count.
 # - Backup = `git bundle` (all branches + history, small). Restore: git clone X.bundle
 # - `pull --ff-only`: no hidden merge commit if local main diverged.
-# - Images are only BUILT by default: most apps listen on 8501, starting all
-#   of them at once would make all but one fail.
+# - Images are only BUILT by default: each app publishes its own host port,
+#   but running every one at once costs several GB of RAM.
 # - On a Windows drive (/mnt/c, /mnt/d) the clones were made by Git for
 #   Windows: core.filemode=false (WSL sees every file as "chmod changed") and
 #   core.autocrlf=true (files have CRLF endings) make WSL git see them as
