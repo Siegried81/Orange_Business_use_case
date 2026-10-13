@@ -26,7 +26,7 @@ def _blocked(*args, **kwargs):
     raise NetworkAccessBlocked(
         "This test tried to open a network connection. Tests must mock every "
         "HTTP/feed/LLM call -- monkeypatch the client (see the existing "
-        "monkeypatch.setattr(ingest.feedparser, 'parse', ...) pattern)."
+        "monkeypatch.setattr(ingest, '_parse_feed', ...) pattern)."
     )
 
 
