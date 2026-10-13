@@ -106,7 +106,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 191 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 208 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):

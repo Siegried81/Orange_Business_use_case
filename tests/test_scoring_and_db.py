@@ -603,7 +603,7 @@ class TestGoogleNewsSourceName:
     def test_override_replaces_publisher_name(self, db_conn, monkeypatch):
         from pipeline import ingest
 
-        monkeypatch.setattr(ingest.feedparser, "parse", lambda url: self._feed())
+        monkeypatch.setattr(ingest, "_parse_feed", lambda url: self._feed())
         ingest.fetch_google_news(
             db_conn, "Retail", "q", source_name=ingest.TED_SOURCE_NAME
         )
@@ -613,7 +613,7 @@ class TestGoogleNewsSourceName:
     def test_default_keeps_publisher_name(self, db_conn, monkeypatch):
         from pipeline import ingest
 
-        monkeypatch.setattr(ingest.feedparser, "parse", lambda url: self._feed())
+        monkeypatch.setattr(ingest, "_parse_feed", lambda url: self._feed())
         ingest.fetch_google_news(db_conn, "Retail", "q")
         row = db_conn.execute("SELECT source_name FROM signals").fetchone()
         assert row["source_name"] == "ted.europa.eu"
@@ -848,3 +848,34 @@ class TestFallbackNeverOverwritesARealScore:
         _, total, _, written = scoring.score_opportunity_space(db_conn, row)
         assert written is False
         assert self._stored(db_conn, os_id)["total_score"] == 8.4
+
+
+class TestFeedFetchTimeout:
+    """RSS/Atom feeds are downloaded with a timeout, never by bare feedparser.parse(url)."""
+
+    def test_parse_feed_passes_a_timeout(self, monkeypatch):
+        from types import SimpleNamespace
+        from pipeline import ingest
+
+        calls = {}
+        rss = b"<rss version='2.0'><channel><item><title>Hello</title></item></channel></rss>"
+
+        def fake_get(url, **kwargs):
+            calls["url"], calls["kwargs"] = url, kwargs
+            return SimpleNamespace(content=rss)
+
+        monkeypatch.setattr(ingest.requests, "get", fake_get)
+        feed = ingest._parse_feed("https://example.test/feed")
+        assert calls["kwargs"]["timeout"] == ingest.FEED_TIMEOUT_SECONDS
+        assert feed.entries[0]["title"] == "Hello"
+
+    def test_timeout_propagates_as_a_source_failure(self, monkeypatch):
+        import requests
+        from pipeline import ingest
+
+        def fake_get(url, **kwargs):
+            raise requests.Timeout("too slow")
+
+        monkeypatch.setattr(ingest.requests, "get", fake_get)
+        with pytest.raises(requests.Timeout):
+            ingest._parse_feed("https://example.test/feed")
