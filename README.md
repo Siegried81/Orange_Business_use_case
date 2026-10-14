@@ -6,11 +6,11 @@ How the scores are computed, why the code is built this way, and what is still o
 
 ## What it does
 
-I built a pipeline that turns scattered external signals into scored, ranked opportunity spaces:
+I built a pipeline that turns scattered external signals into scored, ranked opportunity spaces. The committed `radar.db` holds 4,272 signals collected from the 9 sources (last collection 30 August 2026) and 133 opportunity spaces, all scored on 12 October 2026: 27 hand-picked seeds (`pipeline/config.py::CANDIDATES`) plus 106 promoted from recurring themes. 101 of the 133 have at least one linked signal; the other 32 are shown as "insufficient evidence".
 
 - **Ingest**: pulls signals from 9 sources (Google News, NewsAPI.ai, GDELT, arXiv, Semantic Scholar, vendor blogs, Hacker News, EUR-Lex, TED), each isolated so one failing source never blocks the rest.
 - **Link**: attaches signals to the opportunity space they actually support (a title must share at least 2 distinct keywords with the space's use case and technology, `radar_cli.py::MIN_KEYWORD_OVERLAP`), before any scoring happens.
-- **Score**: two independent axes — Attractiveness (market signal strength 39.7%, evidence quality 27.8%, source diversity 14.1%, strategic relevance 13.0%, novelty/momentum 5.5% — the AHP priority vector of `pipeline/ahp_weights.xlsx`, consistency ratio 0.021; the hand-set 30/25/20/15/10 remains as `--weights=manual`) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`).
+- **Score**: two independent axes — Attractiveness (market signal strength 39.7%, evidence quality 27.8%, source diversity 14.1%, strategic relevance 13.0%, novelty/momentum 5.5% — the AHP priority vector of `pipeline/ahp_weights.xlsx`, consistency ratio 0.021; the hand-set 30/25/20/15/10 remains as `--weights=manual`) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`); a space with no linked signal is classed "insufficient evidence" instead, whatever its scores.
 - **Promote**: recurring themes are promoted into new tracked Opportunity Spaces; a separate taxonomy-extension loop (watchlist → proposal → accepted/rejected) lets the underlying vocabulary grow over time.
 - **Visualize**: a Streamlit dashboard (polar radar + bubble view, role-based next actions) and a Power BI export for reporting.
 
@@ -100,7 +100,7 @@ python radar_cli.py create         # register seed opportunity spaces
 python radar_cli.py promote        # register recurring themes
 python radar_cli.py link           # attach signals to each opportunity space
 python -m pipeline.scoring         # score (LLM); --refresh recomputes the deterministic sub-scores only
-                                   # --weights=manual uses the hand-set 30/20/25/10/15 instead of the AHP weights
+                                   # --weights=manual uses the hand-set 30/25/20/15/10 instead of the AHP weights
                                    # exits non-zero if no LLM provider answered: the previous real scores are kept, not overwritten
 python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitting on a neutral fallback
 python radar_cli.py summary        # write opportunity_spaces_summary.md
