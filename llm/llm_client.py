@@ -52,11 +52,9 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
 SAMBANOVA_API_KEY = os.environ.get("SAMBANOVA_API_KEY", "")
 SAMBANOVA_URL = "https://api.sambanova.ai/v1/chat/completions"
 
-# Sieg 23/08 -- list of available Groq keys, in try-order. Empty/unset
-# GROQ_API_KEY_2 is simply skipped, so this is safe with only 1 key too.
-# Sieg 25/08 -- rotation re-enabled: single-key mode was causing an
-# immediate 429 -> Ollama fallback instead of trying the other 3 keys
-# that are actually set in .env.
+# Groq keys in try-order; unset ones are skipped, so a single key works too.
+# Rotating on a 429 tries the next key before falling back to SambaNova and
+# Ollama, instead of giving up on Groq at the first rate limit.
 GROQ_KEYS = [k for k in (
      os.environ.get("GROQ_API_KEY"),
      os.environ.get("GROQ_API_KEY_2"),
@@ -66,7 +64,7 @@ GROQ_KEYS = [k for k in (
  ) if k]
 
 def _is_rate_limit_error(e):
-    """Sieg 23/08 -- detects a 429/quota error specifically, so we only
+    """Detects a 429/quota error specifically, so we only
     rotate keys for THAT reason (not for e.g. a malformed prompt, which
     would just fail the same way on the second key)."""
     msg = str(e).lower()
@@ -84,11 +82,10 @@ def _call_groq(prompt, system_prompt=None):
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    # Sieg 23/08 -- try each key in turn; on a rate-limit error, move to the
-    # next key instead of failing straight to Ollama. Any OTHER error (bad
-    # key, network issue) still raises immediately -- no point retrying that
-    # on a second key.
-    # Sieg 25/08 -- rotation loop re-enabled (was commented out 24/08).
+    # Try each key in turn; on a rate-limit error, move to the next key
+    # instead of failing straight to the fallback. Any OTHER error (bad key,
+    # network issue) still raises immediately -- no point retrying that on a
+    # second key.
     last_error = None
     for i, api_key in enumerate(GROQ_KEYS):
         try:

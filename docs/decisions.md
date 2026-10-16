@@ -422,3 +422,28 @@ produced by the previous prompt until the next `radar_cli.py` scoring run.
 **What would reverse it.** Removing the clamp and the fence in
 `pipeline/scoring.py` restores the previous behaviour; the tests in
 `tests/test_LLM.py` and `tests/test_scoring_and_db.py` would then fail.
+
+## 2026-10-16 — The radar is drawn on cartesian axes, and the page says how fresh it is
+
+- **What:** the polar radar is now a `go.Scatter` on hidden, equal-scale
+  cartesian axes (rings, spokes and domain labels drawn as shapes and
+  annotations, same compass layout); a chart's selection only counts when it
+  changed since the previous run; the page opens on the top space, and "Top Opportunity" now ranks on
+  attractiveness + right-to-win instead of attractiveness alone (OS013,
+  8.6 + 9.5, instead of OS033, 9.3 + 8.5);
+  the title caption gives the last signal collection and scoring dates; the
+  pipeline-growth section from the team build (27 August) is restored here,
+  counting only watchlist terms still below the proposal threshold.
+- **Why:** Streamlit's `on_select` never reports a click on a
+  `go.Scatterpolar` trace, so the radar could not drive the detail panel, and
+  the bubble chart's last selection (synced second, kept across reruns)
+  overrode every other pick. Opening on OS001 showed an arbitrary space, and
+  nothing on the page dated data collected on 30 August and scored on
+  12 October.
+- **Code change:** `app/streamlit_app.py` only (`polar_xy()`, `data_dates()`,
+  `sync_selection_from_click(..., chart_key)`); 7 dashboard tests added
+  (3 with the click fix in PR #19, 4 with the rest).
+  No pipeline or database change, so no score moves.
+- **Revisit if:** Streamlit adds selection events for polar traces, which
+  would allow going back to `go.Scatterpolar`.
+

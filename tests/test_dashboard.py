@@ -97,6 +97,13 @@ class TestTopOpportunityLabel:
         )
         assert dashboard.top_opportunity_label(frame) is None
 
+    def test_space_without_right_to_win_cannot_be_the_top(self, dashboard):
+        frame = pd.DataFrame(
+            {"label": ["OS001", "OS002"], "total_score": [9.9, 6.0], "right_to_win_score": [None, 7.0]}
+        )
+        ranked = frame.assign(overall=frame["total_score"] + frame["right_to_win_score"])
+        assert dashboard.top_opportunity_label(ranked, score_column="overall") == "OS002"
+
     def test_empty_selection_returns_none(self, dashboard):
         frame = pd.DataFrame({"label": [], "total_score": []})
         assert dashboard.top_opportunity_label(frame) is None
@@ -202,3 +209,38 @@ class TestChartClickSync:
         fake_st.session_state["os_selectbox"] = self.LABELS["OS002"]
         sync(self._click("OS001"), self.LABELS, "radar_chart")
         assert fake_st.session_state["os_selectbox"] == self.LABELS["OS001"]
+
+
+class TestPageOpening:
+    """What a first-time visitor (no ?topic= link) sees before any click."""
+
+    def test_opens_on_the_best_space_on_both_axes(self, ran_app, dashboard):
+        frame, _, _ = dashboard.load_scores()
+        overall = frame["total_score"] + frame["right_to_win_score"]
+        best = frame.loc[overall.idxmax(), "label"]
+        # Only meaningful while the two rankings disagree on radar.db.
+        assert best != frame.loc[frame["total_score"].idxmax(), "label"]
+        assert ran_app.selectbox(key="os_selectbox").value.startswith(f"{best} —")
+        top_metric = next(m for m in ran_app.metric if m.label == "Top Opportunity")
+        assert top_metric.value == best
+
+    def test_caption_dates_the_signals_and_the_scores(self, ran_app, dashboard):
+        collected, scored = dashboard.data_dates()
+        captions = " ".join(str(c.value) for c in ran_app.caption)
+        assert f"signals collected up to {collected.day} {collected:%b %Y}" in captions
+        assert f"scored {scored.day} {scored:%b %Y}" in captions
+
+    def test_pipeline_growth_section_is_rendered(self, ran_app):
+        subheaders = " ".join(str(h.value) for h in ran_app.subheader)
+        assert "Pipeline growth" in subheaders
+        metrics = {m.label: m.value for m in ran_app.metric}
+        conn = pipeline_db.get_connection()
+        try:
+            pending = len(conn.execute("SELECT 1 FROM proposals WHERE status = 'pending'").fetchall())
+            below = len(conn.execute("SELECT 1 FROM watchlist_terms WHERE status = 'pending'").fetchall())
+        finally:
+            conn.close()
+        assert metrics["Proposals pending review"] == str(pending)
+        captions = " ".join(str(c.value) for c in ran_app.caption)
+        # "proposed" terms already crossed the threshold and must not be counted.
+        assert f"{below} term(s) on the watchlist, still below" in captions
