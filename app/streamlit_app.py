@@ -21,12 +21,20 @@ from pathlib import Path
 import plotly.graph_objects as go
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from pipeline.db import get_connection, get_latest_scores, get_all_opportunity_spaces
+from pipeline.db import (
+    get_all_opportunity_spaces,
+    get_connection,
+    get_latest_scores,
+    list_promotable_themes,
+    list_watchlist,
+)
+from pipeline.extend_taxonomy import get_proposals
 from pipeline.config import (
     DOMAINS_TAXONOMY,
     HORIZONS,
     CAPABILITY_STATS,
     QUADRANTS,
+    RECURRING_THEME_PROMOTION_THRESHOLD,
     STRONG_THRESHOLD,
     quadrant,
 )
@@ -34,7 +42,7 @@ from pipeline.config import (
 st.set_page_config(
     page_title="Innovation Radar — Orange Business", layout="wide", page_icon="📡"
 )
-DARK_CSS = '\n<style>\n:root {\n    --radar-bg: #fffbf3;\n    --radar-panel: #f9f5f0;\n    /* Two oranges on purpose. --radar-orange is the brand orange and is only\n       used for marks (chart lines, fills, borders, the tab underline), where\n       contrast is judged against the 3:1 graphics rule. On the panel\n       background it measures about 2.3:1, which fails the 4.5:1 text rule, so\n       every piece of orange TEXT -- metric values, selected tab label -- uses\n       --radar-orange-text instead (about 4.6:1 on the panel). */\n    --radar-orange: #ff7900;\n    --radar-orange-text: #b35400;\n    --radar-orange-soft: #ffb066;\n    --radar-text: #002244;\n    --radar-muted: #5a6b7a;\n}\n.stApp { background-color: var(--radar-bg); color: var(--radar-text); }\nsection[data-testid="stSidebar"] { background-color: var(--radar-panel); border-right: 1px solid #e3ded2; }\nh1, h2, h3 { color: var(--radar-text) !important; }\n.stMetric { background-color: var(--radar-panel); border: 1px solid #e3ded2; border-radius: 10px; padding: 10px 14px; }\n[data-testid="stMetricValue"] { color: var(--radar-orange-text) !important; }\n/* st.metric labels ("Attractiveness", "Right to win", "Urgency")\n   were getting cut off with "..." in the narrow detail-panel columns. This\n   lets the label text wrap onto a second line instead of being truncated. */\n[data-testid="stMetricLabel"] p {\n    white-space: normal !important;\n    overflow: visible !important;\n    text-overflow: unset !important;\n}\n.stTabs [data-baseweb="tab"] { color: var(--radar-muted); }\n.stTabs [aria-selected="true"] { color: var(--radar-orange-text) !important; border-bottom-color: var(--radar-orange) !important; }\n.stAlert { background-color: var(--radar-panel); border-left: 3px solid var(--radar-orange); }\ndiv[data-testid="stDataFrame"] { border: 1px solid #e3ded2; border-radius: 8px; }\n</style>\n'
+DARK_CSS = '\n<style>\n:root {\n    --radar-bg: #fffbf3;\n    --radar-panel: #f9f5f0;\n    /* Two oranges on purpose. --radar-orange is the brand orange and is only\n       used for marks (chart lines, fills, borders, the tab underline), where\n       contrast is judged against the 3:1 graphics rule. On the panel\n       background it measures about 2.3:1, which fails the 4.5:1 text rule, so\n       every piece of orange TEXT -- metric values, selected tab label -- uses\n       --radar-orange-text instead (about 4.6:1 on the panel). */\n    --radar-orange: #ff7900;\n    --radar-orange-text: #b35400;\n    --radar-orange-soft: #ffb066;\n    --radar-text: #002244;\n    --radar-muted: #5a6b7a;\n}\n.stApp { background-color: var(--radar-bg); color: var(--radar-text); }\nsection[data-testid="stSidebar"] { background-color: var(--radar-panel); border-right: 1px solid #e3ded2; }\nh1, h2, h3 { color: var(--radar-text) !important; }\n.stMetric { background-color: var(--radar-panel); border: 1px solid #e3ded2; border-radius: 10px; padding: 10px 14px; }\n[data-testid="stMetricValue"] { color: var(--radar-orange-text) !important; }\n/* The three detail-panel metrics share a 2/5-wide column, and "10.0/10"\n   next to the Urgency help icon was cut to "10.0...". Scale the value with\n   the viewport instead of Streamlit\'s fixed 2.25rem. */\n[data-testid="stMetricValue"] { font-size: clamp(1.3rem, 2vw, 2.25rem) !important; }\n/* st.metric labels ("Attractiveness", "Right to win", "Urgency")\n   were getting cut off with "..." in the narrow detail-panel columns. This\n   lets the label text wrap onto a second line instead of being truncated. */\n[data-testid="stMetricLabel"] p {\n    white-space: normal !important;\n    overflow: visible !important;\n    text-overflow: unset !important;\n}\n.stTabs [data-baseweb="tab"] { color: var(--radar-muted); }\n.stTabs [aria-selected="true"] { color: var(--radar-orange-text) !important; border-bottom-color: var(--radar-orange) !important; }\n.stAlert { background-color: var(--radar-panel); border-left: 3px solid var(--radar-orange); }\ndiv[data-testid="stDataFrame"] { border: 1px solid #e3ded2; border-radius: 8px; }\n</style>\n'
 # Shown under the title on every rerun and repeated in the footer. The
 # dashboard presents LLM-generated scores, justifications and "do this next"
 # actions as if they were measurements; the EU AI Act requires that a user be
@@ -100,6 +108,27 @@ def load_scores():
     df["buyer_persona"] = df["buyer_persona"].fillna("Unassigned")
     df["geography"] = df["geography"].fillna("Unassigned")
     return (df, signals_by_os, total_os_count)
+
+
+@st.cache_data(ttl=60)
+def data_dates():
+    """(last signal collection, last scoring run) as dates, None when absent.
+
+    Shown under the title so a reader knows how fresh the radar is: signals
+    and scores are refreshed by separate pipeline steps, on different days.
+    """
+    conn = get_connection()
+    try:
+        collected = conn.execute("SELECT MAX(collected_at) FROM signals").fetchone()[0]
+        # Attractiveness and right-to-win are scored by separate steps; the
+        # page reports whichever ran last.
+        scored = conn.execute(
+            "SELECT MAX(t) FROM (SELECT MAX(computed_at) AS t FROM scores"
+            " UNION ALL SELECT MAX(computed_at) FROM right_to_win_scores)"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    return tuple(pd.to_datetime(v).date() if v else None for v in (collected, scored))
 
 
 def is_linkable_url(raw) -> bool:
@@ -291,8 +320,15 @@ with st.sidebar.expander("📊 Orange Business at a glance"):
     for stat in CAPABILITY_STATS:
         st.caption(f"**{stat['stat']}**  \n_{stat['source']}_")
 st.title("📡 Innovation Radar")
+collected_on, scored_on = data_dates()
+freshness = " · ".join(
+    f"{what} {d.day} {d:%b %Y}"
+    for what, d in (("signals collected up to", collected_on), ("scored", scored_on))
+    if d
+)
 st.caption(
     f"{role} · ordered by {sort_by.lower()} · {total_os_count} opportunity spaces tracked"
+    + (f" · {freshness}" if freshness else "")
 )
 st.warning(AI_DISCLOSURE)
 st.subheader("📊 Overview")
@@ -323,14 +359,21 @@ with col3:
     median_attractiveness = filtered["total_score"].median()
     st.metric("Median Attractiveness", f"{median_attractiveness:.2f}/10")
 with col4:
-    best_opportunity = top_opportunity_label(filtered)
+    # The radar has two axes and "strong" needs both, so the top space is the
+    # best on attractiveness + right-to-win, not on attractiveness alone (that
+    # crowned OS033, 9.3 + 8.5, over OS013, 8.6 + 9.5). A space with no
+    # right-to-win score yet cannot be the top one.
+    best_opportunity = top_opportunity_label(
+        filtered.assign(overall=filtered["total_score"] + filtered["right_to_win_score"]),
+        score_column="overall",
+    )
     st.metric(
         "Top Opportunity",
         best_opportunity or "—",
         help=(
-            None
+            "Highest attractiveness + right to win among the spaces matching these filters."
             if best_opportunity
-            else "No attractiveness score among the opportunity spaces matching these filters."
+            else "No space matching these filters has both an attractiveness and a right-to-win score."
         ),
     )
 with col5:
@@ -340,7 +383,10 @@ with col5:
     )
 query_topic = st.query_params.get("topic")
 labels = sorted(filtered["label"].tolist())
-default_index = labels.index(query_topic) if query_topic in labels else 0
+# Without a shared ?topic= link, open on the top space (attractiveness + right-to-win) under the
+# current role and filters rather than on whichever label sorts first.
+default_label = query_topic if query_topic in labels else best_opportunity
+default_index = labels.index(default_label) if default_label in labels else 0
 label_display = {
     lbl: f"{lbl} — {filtered.loc[filtered['label'] == lbl, 'use_case'].iloc[0]} x {filtered.loc[filtered['label'] == lbl, 'technology'].iloc[0]}"
     for lbl in labels
@@ -409,7 +455,9 @@ with col_radar:
             x_lbl, y_lbl = polar_xy(1.06, i * DOMAIN_ANGLE_WIDTH)
             domain_labels.append(
                 dict(
-                    x=x_lbl, y=y_lbl, text=name, showarrow=False,
+                    # Two-word names on two lines, so the side labels need
+                    # less horizontal room and the disc can stay large.
+                    x=x_lbl, y=y_lbl, text=name.replace(" ", "<br>", 1), showarrow=False,
                     xanchor="left" if x_lbl > 0.05 else "right" if x_lbl < -0.05 else "center",
                     yanchor="bottom" if y_lbl > 0.05 else "top" if y_lbl < -0.05 else "middle",
                     font=dict(color="#002244", size=11),
@@ -419,6 +467,9 @@ with col_radar:
             dict(
                 x=HORIZON_RADIUS[h], y=0, text=h.upper(), showarrow=False,
                 yanchor="bottom", font=dict(color="#5a6b7a", size=10),
+                # Drawn over the bubbles: a panel-coloured box keeps the ring
+                # name readable where a bubble sits on it.
+                bgcolor="rgba(249, 245, 240, 0.9)", borderpad=1,
             )
             for h in HORIZONS
         ]
@@ -426,18 +477,18 @@ with col_radar:
             type="circle", xref="x", yref="y", x0=-1, y0=-1, x1=1, y1=1,
             fillcolor="#f9f5f0", line=dict(color="#5a6b7a", width=1), layer="below",
         )
-        hidden_axis = dict(visible=False, range=[-1.45, 1.45])
+        hidden_axis = dict(visible=False, range=[-1.4, 1.4])
         fig.update_layout(
             shapes=[disc, *rings, *spokes],
             annotations=domain_labels + horizon_labels,
             xaxis=hidden_axis,
-            yaxis=dict(hidden_axis, scaleanchor="x", scaleratio=1),
+            yaxis=dict(hidden_axis, range=[-1.15, 1.15], scaleanchor="x", scaleratio=1),
             plot_bgcolor="#ffffff",
             paper_bgcolor="#ffffff",
             font=dict(color="#002244"),
             showlegend=False,
             height=480,
-            margin=dict(l=40, r=140, t=60, b=60),
+            margin=dict(l=10, r=110, t=20, b=20),
         )
         radar_event = st.plotly_chart(
             fig,
@@ -741,6 +792,58 @@ st.dataframe(
     width="stretch",
     hide_index=True,
 )
+st.divider()
+st.subheader("📈 Pipeline growth")
+st.caption(
+    "The list of opportunity spaces isn't fixed: it grows from recurring signal "
+    "themes, and the taxonomy grows from team-reviewed proposals."
+)
+# The same queries `radar_cli.py review` and `promote` run, so the counts
+# cannot drift from what those commands would act on. Only "pending" terms
+# are below the proposal threshold: "proposed" ones already crossed it.
+growth_conn = get_connection()
+try:
+    pending_proposals = get_proposals(growth_conn, "pending")
+    promotable_themes = list_promotable_themes(growth_conn, RECURRING_THEME_PROMOTION_THRESHOLD)
+    watchlist_below_threshold = len(list_watchlist(growth_conn, status="pending"))
+except sqlite3.OperationalError:
+    # A radar.db older than the taxonomy tables: show the rest of the page.
+    pending_proposals = promotable_themes = None
+finally:
+    growth_conn.close()
+if pending_proposals is None:
+    st.info("This radar.db predates the taxonomy tables: run the pipeline once to see its growth.")
+    pending_proposals = promotable_themes = []
+    watchlist_below_threshold = 0
+col_g1, col_g2, col_g3 = st.columns(3)
+col_g1.metric("Opportunity spaces tracked", total_os_count)
+col_g2.metric("Proposals pending review", len(pending_proposals))
+col_g3.metric("Themes ready to promote", len(promotable_themes))
+if pending_proposals:
+    with st.expander(f"⏳ {len(pending_proposals)} taxonomy proposal(s) awaiting team approval"):
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    (r["vertical"], r["proposed_use_case"], r["proposed_technology"], r["frequency"], r["last_seen"])
+                    for r in pending_proposals
+                ],
+                columns=["Vertical", "Proposed use case", "Proposed technology", "Frequency", "Last seen"],
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+if promotable_themes:
+    with st.expander(f"🚀 {len(promotable_themes)} recurring theme(s) ready for `radar_cli.py promote`"):
+        st.dataframe(
+            pd.DataFrame(
+                [(r["vertical"], r["use_case"], r["technology"], r["frequency"]) for r in promotable_themes],
+                columns=["Vertical", "Use case", "Technology", "Times seen"],
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+st.caption(f"{watchlist_below_threshold} term(s) on the watchlist, still below the proposal threshold.")
+
 st.divider()
 st.caption(AI_DISCLOSURE)
 st.caption(
