@@ -358,10 +358,9 @@ def cmd_scores(conn):
 
 # ---------- summary ----------
 
-# 23/08 Sieg, summary was dumping ALL scored OS (62 and growing) into the
-# client-facing doc -- added --top so a 10-min pitch doesn't have to scroll
-# past every single one. Sorted by attractiveness (total_score) descending;
-# None (default) keeps the old "show everything" behavior for internal use.
+# --top keeps the client-facing summary short enough for a 10-minute pitch,
+# sorted by attractiveness (total_score) descending; None (default) shows
+# every scored OS, for internal use.
 def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
     rows = get_latest_scores(conn)
     if not rows:
@@ -369,7 +368,7 @@ def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
         return
 
     if top_n:
-        rows = sorted(rows, key=lambda r: r["total_score"], reverse=True)[:top_n]  # or rows = sorted(rows, key=lambda r: r["right_to_win_score"], reverse=True)[:top_n] --> (right to win)
+        rows = sorted(rows, key=lambda r: r["total_score"], reverse=True)[:top_n]
         print(f"--top {top_n}: keeping the {len(rows)} highest-attractiveness opportunity space(s) "
               f"out of {len(get_latest_scores(conn))} scored.")
 
