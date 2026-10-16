@@ -156,3 +156,49 @@ class TestTabsHoldTheirOwnContent:
         markdown = " ".join(str(m.value) for m in ran_app.markdown)
         assert "Strategic position" in markdown
         assert "Matched assets" in markdown
+
+
+class TestChartClickSync:
+    """Both charts keep their last selection across reruns and are synced in
+    order (radar, then bubble), so a stale bubble pick used to override every
+    radar click and every selectbox change. Only a new click may count."""
+
+    LABELS = {"OS001": "OS001 — a x b", "OS002": "OS002 — c x d"}
+
+    @staticmethod
+    def _click(label):
+        return {"selection": {"points": [{"customdata": label}]}}
+
+    @pytest.fixture
+    def fake_st(self, dashboard, monkeypatch):
+        class FakeSt:
+            session_state = {}
+            query_params = {}
+
+        monkeypatch.setattr(dashboard, "st", FakeSt)
+        return FakeSt
+
+    def test_radar_click_wins_over_a_stale_bubble_selection(self, dashboard, fake_st):
+        sync = dashboard.sync_selection_from_click
+        sync(None, self.LABELS, "radar_chart")
+        sync(self._click("OS001"), self.LABELS, "bubble_chart")
+        # Next run: the radar is clicked, the bubble still reports OS001.
+        sync(self._click("OS002"), self.LABELS, "radar_chart")
+        sync(self._click("OS001"), self.LABELS, "bubble_chart")
+        assert fake_st.session_state["os_selectbox"] == self.LABELS["OS002"]
+        assert fake_st.query_params["topic"] == "OS002"
+
+    def test_selectbox_change_is_not_undone_by_an_old_click(self, dashboard, fake_st):
+        sync = dashboard.sync_selection_from_click
+        sync(self._click("OS001"), self.LABELS, "bubble_chart")
+        fake_st.session_state["os_selectbox"] = self.LABELS["OS002"]
+        sync(self._click("OS001"), self.LABELS, "bubble_chart")
+        assert fake_st.session_state["os_selectbox"] == self.LABELS["OS002"]
+
+    def test_clicking_the_same_point_again_after_clearing_reselects_it(self, dashboard, fake_st):
+        sync = dashboard.sync_selection_from_click
+        sync(self._click("OS001"), self.LABELS, "radar_chart")
+        sync({"selection": {"points": []}}, self.LABELS, "radar_chart")
+        fake_st.session_state["os_selectbox"] = self.LABELS["OS002"]
+        sync(self._click("OS001"), self.LABELS, "radar_chart")
+        assert fake_st.session_state["os_selectbox"] == self.LABELS["OS001"]
