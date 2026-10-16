@@ -65,6 +65,15 @@ DB_MISSING_HINT = (
 )
 st.markdown(DARK_CSS, unsafe_allow_html=True)
 HORIZON_RADIUS = {"Now": 0.28, "Next": 0.6, "Later": 0.92}
+# The client wants quick wins and bigger bets kept apart, both being worth
+# pursuing. Both are read off the right-to-win portfolio distance, so "All"
+# also keeps the spaces with no right-to-win score yet.
+OPPORTUNITY_TYPES = {
+    "All": None,
+    "Quick wins (L0–L1)": ("L0", "L1"),
+    "Partner-dependent (L2)": ("L2",),
+    "Bigger bets (L3–L4)": ("L3", "L4"),
+}
 DOMAIN_NAMES = [d["name"] for d in DOMAINS_TAXONOMY]
 DOMAIN_ANGLE_WIDTH = 360 / max(1, len(DOMAIN_NAMES))
 
@@ -153,6 +162,18 @@ def top_opportunity_label(frame, score_column="total_score", label_column="label
     if frame.empty or frame[score_column].isna().all():
         return None
     return frame.loc[frame[score_column].idxmax(), label_column]
+
+
+def filter_by_opportunity_type(frame, opportunity_type):
+    """Rows whose portfolio distance belongs to the chosen opportunity type.
+
+    "All" returns the frame untouched, so a space without a right-to-win
+    score is only hidden once the reader asks for a specific type.
+    """
+    levels = OPPORTUNITY_TYPES[opportunity_type]
+    if levels is None:
+        return frame
+    return frame[frame["portfolio_distance"].isin(levels)]
 
 
 def domain_angle(domain, seed):
@@ -266,6 +287,12 @@ def _matches_any_geo(cell, picked):
 
 
 st.sidebar.markdown("### Filters")
+opportunity_type = st.sidebar.radio(
+    "Opportunity type",
+    list(OPPORTUNITY_TYPES),
+    index=0,
+    help="Read off the right-to-win portfolio distance: L0-L1 Orange Business can sell with existing offers, L2 needs a partner, L3-L4 needs new capabilities.",
+)
 picked_verticals = st.sidebar.multiselect("Vertical", verticals, default=verticals)
 picked_domains = st.sidebar.multiselect("Domain", domains, default=domains)
 picked_horizons = st.sidebar.multiselect("Horizon", HORIZONS, default=HORIZONS)
@@ -291,6 +318,7 @@ sort_col = {
     "Right to win": "right_to_win_score",
     "Urgency": "urgency_score",
 }.get(sort_by)
+df_role = filter_by_opportunity_type(df_role, opportunity_type)
 filtered = df_role[
     df_role["vertical"].isin(picked_verticals)
     & df_role["domain"].isin(picked_domains)
@@ -327,7 +355,9 @@ freshness = " · ".join(
     if d
 )
 st.caption(
-    f"{role} · ordered by {sort_by.lower()} · {total_os_count} opportunity spaces tracked"
+    f"{role}"
+    + ("" if opportunity_type == "All" else f" · {opportunity_type}")
+    + f" · ordered by {sort_by.lower()} · {total_os_count} opportunity spaces tracked"
     + (f" · {freshness}" if freshness else "")
 )
 st.warning(AI_DISCLOSURE)
@@ -359,21 +389,18 @@ with col3:
     median_attractiveness = filtered["total_score"].median()
     st.metric("Median Attractiveness", f"{median_attractiveness:.2f}/10")
 with col4:
-    # The radar has two axes and "strong" needs both, so the top space is the
-    # best on attractiveness + right-to-win, not on attractiveness alone (that
-    # crowned OS033, 9.3 + 8.5, over OS013, 8.6 + 9.5). A space with no
-    # right-to-win score yet cannot be the top one.
-    best_opportunity = top_opportunity_label(
-        filtered.assign(overall=filtered["total_score"] + filtered["right_to_win_score"]),
-        score_column="overall",
-    )
+    # Ranked on attractiveness alone: the client asked for attractiveness to
+    # weigh more at this stage, and right-to-win is only a proxy until it is
+    # scored against Orange Business internal data, so it must not decide the
+    # top space.
+    best_opportunity = top_opportunity_label(filtered)
     st.metric(
         "Top Opportunity",
         best_opportunity or "—",
         help=(
-            "Highest attractiveness + right to win among the spaces matching these filters."
+            "Highest attractiveness among the spaces matching these filters. Right to win is not used for the ranking: it is provisional until scored against internal data."
             if best_opportunity
-            else "No space matching these filters has both an attractiveness and a right-to-win score."
+            else "No space matching these filters has an attractiveness score."
         ),
     )
 with col5:
@@ -383,7 +410,7 @@ with col5:
     )
 query_topic = st.query_params.get("topic")
 labels = sorted(filtered["label"].tolist())
-# Without a shared ?topic= link, open on the top space (attractiveness + right-to-win) under the
+# Without a shared ?topic= link, open on the most attractive space under the
 # current role and filters rather than on whichever label sorts first.
 default_label = query_topic if query_topic in labels else best_opportunity
 default_index = labels.index(default_label) if default_label in labels else 0
@@ -565,7 +592,7 @@ with col_radar:
         )
         sync_selection_from_click(bubble_event, label_display, "bubble_chart")
         st.caption(
-            "X = Attractiveness. Y = Right to win. Bubble size = market signal strength (volume proxy for market potential). Color = vertical. Click a bubble to select it in the panel on the right."
+            "X = Attractiveness. Y = Right to win (provisional, public portfolio only). Bubble size = market signal strength (volume proxy for market potential). Color = vertical. Click a bubble to select it in the panel on the right."
         )
 with col_detail:
     if not labels:
@@ -594,6 +621,7 @@ with col_detail:
             else "Not scored yet"
         ),
         f"[{row.portfolio_distance}]",
+        help="Provisional: an LLM classification (portfolio distance L0-L4) against the public Orange Business catalogue. It becomes a measured score once fed with internal data (offers, sales, customer references).",
     )
     m3.metric(
         "Urgency",
