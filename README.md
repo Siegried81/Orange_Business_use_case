@@ -2,6 +2,25 @@
 
 A signal-driven opportunity discovery tool built for an Orange Business use case. It ingests external market signals (news, research, regulation, public procurement...), scores them into ranked Opportunity Spaces, and surfaces them through an interactive dashboard.
 
+**Live demo:** https://orangebusinessusecase.streamlit.app/
+
+## Origin and credits
+
+This project started as a BeCode team assignment for an Orange Business use case, built with Hiba, Irene and Gaetan. The team's final version lives in the [team repository](https://github.com/amellalajiba-sys/Orange_use_case) and was left untouched. This repository is my own continuation of that work: after the team delivery I kept developing and improving the radar here, on my own.
+
+What changed compared with the team's final version (`main`, 11 September 2026), measured on both repositories:
+
+| | Team version | This repository |
+|---|---|---|
+| Automated tests | 60 test functions in 2 files | 195 test functions in 13 files, run with the network blocked |
+| CI / deployment | none (dev container only) | GitHub Actions (tests + Docker build on every push), Dependabot, Docker, Render, live Streamlit app |
+| Attractiveness weights | hand-set 30/25/20/15/10 | derived with AHP from a pairwise-comparison sheet (consistency ratio 0.021); the hand-set weights remain an option |
+| Signal-to-space linking | 2,899 links, every space linked, no relevance check | 469 links, each sharing at least 2 keywords with the space; 32 spaces without real evidence are flagged "insufficient evidence" instead of being scored on unrelated signals |
+| Data | 3,926 signals, 125 opportunity spaces | 4,272 signals, 133 opportunity spaces |
+| Score history | latest score only | every accepted score kept in `score_history` / `right_to_win_history`, so runs can be compared |
+| Power BI | `.pbix` fed by Excel exports | `.pbix` + PBIP project (diffable in git) fed by a tested CSV export script |
+| Guardrails | — | signal titles fenced as untrusted data in LLM prompts (prompt-injection defence), LLM scores clamped to 0-10 with nan/inf sent to a fallback, 20 s timeout on feed downloads, foreign keys enforced in SQLite, only http(s) source links made clickable, AI-generated content disclosed on the dashboard (AI Act), security policy |
+
 How the scores are computed, why the code is built this way, and what is still open: [technical deep dive](docs/technical_deep_dive.md). Dated decisions: [docs/decisions.md](docs/decisions.md).
 
 ## What it does
@@ -106,7 +125,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 208 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 211 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
