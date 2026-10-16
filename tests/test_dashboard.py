@@ -97,16 +97,45 @@ class TestTopOpportunityLabel:
         )
         assert dashboard.top_opportunity_label(frame) is None
 
-    def test_space_without_right_to_win_cannot_be_the_top(self, dashboard):
+    def test_right_to_win_does_not_decide_the_top(self, dashboard):
         frame = pd.DataFrame(
-            {"label": ["OS001", "OS002"], "total_score": [9.9, 6.0], "right_to_win_score": [None, 7.0]}
+            {"label": ["OS001", "OS002"], "total_score": [9.3, 8.6], "right_to_win_score": [None, 9.5]}
         )
-        ranked = frame.assign(overall=frame["total_score"] + frame["right_to_win_score"])
-        assert dashboard.top_opportunity_label(ranked, score_column="overall") == "OS002"
+        assert dashboard.top_opportunity_label(frame) == "OS001"
 
     def test_empty_selection_returns_none(self, dashboard):
         frame = pd.DataFrame({"label": [], "total_score": []})
         assert dashboard.top_opportunity_label(frame) is None
+
+
+class TestOpportunityTypeFilter:
+    """Quick wins and bigger bets are read off the portfolio distance."""
+
+    FRAME = pd.DataFrame(
+        {"label": ["OS001", "OS002", "OS003", "OS004"], "portfolio_distance": ["L0", "L2", "L4", None]}
+    )
+
+    def test_all_keeps_spaces_without_right_to_win(self, dashboard):
+        kept = dashboard.filter_by_opportunity_type(self.FRAME, "All")
+        assert kept["label"].tolist() == ["OS001", "OS002", "OS003", "OS004"]
+
+    def test_each_type_keeps_only_its_levels(self, dashboard):
+        pick = lambda t: dashboard.filter_by_opportunity_type(self.FRAME, t)["label"].tolist()
+        assert pick("Quick wins (L0–L1)") == ["OS001"]
+        assert pick("Partner-dependent (L2)") == ["OS002"]
+        assert pick("Bigger bets (L3–L4)") == ["OS003"]
+
+    def test_bigger_bets_opens_on_the_most_attractive_bet(self, dashboard):
+        app = AppTest.from_file(_APP_PATH, default_timeout=120)
+        app.run()
+        app.sidebar.radio[1].set_value("Bigger bets (L3–L4)").run()
+        assert not app.exception, f"dashboard raised: {app.exception}"
+        frame, _, _ = dashboard.load_scores()
+        bets = frame[frame["portfolio_distance"].isin(["L3", "L4"])]
+        best = bets.loc[bets["total_score"].idxmax(), "label"]
+        top_metric = next(m for m in app.metric if m.label == "Top Opportunity")
+        assert top_metric.value == best
+        assert app.metric[0].value == str(len(bets))
 
 
 class TestAiActDisclosure:
@@ -214,12 +243,12 @@ class TestChartClickSync:
 class TestPageOpening:
     """What a first-time visitor (no ?topic= link) sees before any click."""
 
-    def test_opens_on_the_best_space_on_both_axes(self, ran_app, dashboard):
+    def test_opens_on_the_most_attractive_space(self, ran_app, dashboard):
         frame, _, _ = dashboard.load_scores()
+        best = frame.loc[frame["total_score"].idxmax(), "label"]
         overall = frame["total_score"] + frame["right_to_win_score"]
-        best = frame.loc[overall.idxmax(), "label"]
         # Only meaningful while the two rankings disagree on radar.db.
-        assert best != frame.loc[frame["total_score"].idxmax(), "label"]
+        assert best != frame.loc[overall.idxmax(), "label"]
         assert ran_app.selectbox(key="os_selectbox").value.startswith(f"{best} —")
         top_metric = next(m for m in ran_app.metric if m.label == "Top Opportunity")
         assert top_metric.value == best

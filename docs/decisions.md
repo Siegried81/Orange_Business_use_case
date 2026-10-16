@@ -447,3 +447,27 @@ produced by the previous prompt until the next `radar_cli.py` scoring run.
 - **Revisit if:** Streamlit adds selection events for polar traces, which
   would allow going back to `go.Scatterpolar`.
 
+## 2026-10-16 — "Top Opportunity" ranks on attractiveness alone again
+
+- **What:** the dashboard's "Top Opportunity" metric, and the space the page
+  opens on, rank on attractiveness alone (OS033, 9.31) instead of
+  attractiveness + right-to-win (OS013, 8.59 + 9.5), reversing the ranking
+  of the entry above. Right-to-win stays on the page as the second axis,
+  labelled provisional.
+- **Why:** the client's answers to the team's questions say attractiveness
+  should weigh more at this stage, and that right-to-win should include
+  Orange Business internal data, which is not available yet. Right-to-win is
+  an LLM classification against the public catalogue, so it should not
+  decide which space comes first.
+- **Also:** an "Opportunity type" sidebar filter (All / quick wins L0–L1 /
+  partner-dependent L2 / bigger bets L3–L4), because the client wants quick
+  wins and bigger bets both kept, but categorised apart. On radar.db: 84, 1
+  and 48 spaces, topped by OS033, OS031 and OS024.
+- **Code change:** `app/streamlit_app.py` (metric, help texts, bubble
+  caption, `filter_by_opportunity_type()`); 2 dashboard tests rewritten for
+  the new ranking, 3 added for the filter. The dashboard,
+  the Power BI report (`RANKX` on attractiveness) and
+  `opportunity_spaces_summary_top_15.md` now agree. No score moves.
+- **Revisit if:** right-to-win is scored against internal data; a combined
+  ranking then becomes defensible.
+
