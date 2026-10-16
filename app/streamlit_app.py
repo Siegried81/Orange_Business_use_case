@@ -11,6 +11,7 @@ while the pipeline runs.
 Run:
     python -m streamlit run app/streamlit_app.py
 """
+import math
 import pandas as pd
 import re
 import sqlite3
@@ -142,6 +143,13 @@ def domain_angle(domain, seed):
     return center + jitter
 
 
+def polar_xy(r, angle_deg):
+    """Cartesian position of a radar point: 0 degrees points north and angles
+    grow clockwise, the compass layout of the original polar subplot."""
+    angle = math.radians(angle_deg)
+    return r * math.sin(angle), r * math.cos(angle)
+
+
 def radius_for(horizon, seed):
     """Radius (0-1) on the polar radar: Now is closest to the center, Later
     is on the outside. Same deterministic jitter idea as domain_angle(),
@@ -151,21 +159,26 @@ def radius_for(horizon, seed):
     return max(0.05, min(0.98, base + jitter))
 
 
-def sync_selection_from_click(event, label_display, widget_key="os_selectbox"):
+def sync_selection_from_click(event, label_display, chart_key, widget_key="os_selectbox"):
     """Make a click on a chart point select that OS in the detail panel.
 
     Writes the selectbox's session_state key (so the widget follows the
     click) and the ?topic= query param (so the selection survives a reload
     and can be shared as a link). Ignores clicks without a known label.
+
+    A chart keeps its selection across reruns, so both charts report their
+    last click on every run. Only a selection that changed since the previous
+    run counts as a click; otherwise the bubble chart's old selection (synced
+    second) would override every new radar click and every selectbox change.
     """
-    if not event:
-        return
-    points = (event.get("selection") or {}).get("points") or []
-    if not points:
-        return
-    label = points[0].get("customdata")
+    points = ((event or {}).get("selection") or {}).get("points") or []
+    label = points[0].get("customdata") if points else None
     if isinstance(label, (list, tuple)):
         label = label[0] if label else None
+    seen_key = f"_last_click_{chart_key}"
+    if label == st.session_state.get(seen_key):
+        return
+    st.session_state[seen_key] = label
     if label and label in label_display:
         st.session_state[widget_key] = label_display[label]
         st.query_params["topic"] = label
@@ -346,10 +359,15 @@ with col_radar:
         radii = [
             radius_for(h, seed) for h, seed in zip(radar_data["horizon"], radar_data["id"])
         ]
+        # Drawn on cartesian axes, not go.Scatterpolar: Streamlit's on_select
+        # never reports a click on a polar trace, so the radar could not drive
+        # the detail panel. polar_xy() keeps the compass layout (0 deg = north,
+        # clockwise) that the polar subplot used.
+        points_xy = [polar_xy(r, t) for r, t in zip(radii, thetas)]
         fig.add_trace(
-            go.Scatterpolar(
-                r=radii,
-                theta=thetas,
+            go.Scatter(
+                x=[x for x, _ in points_xy],
+                y=[y for _, y in points_xy],
                 mode="markers",
                 marker=dict(
                     size=size_vals,
@@ -371,25 +389,50 @@ with col_radar:
                 customdata=radar_data["label"],
             )
         )
+        rings = [
+            dict(
+                type="circle", xref="x", yref="y", x0=-r, y0=-r, x1=r, y1=r,
+                line=dict(color="#e3ded2", width=1), layer="below",
+            )
+            for r in [HORIZON_RADIUS[h] for h in HORIZONS]
+        ]
+        spokes = []
+        domain_labels = []
+        for i, name in enumerate(DOMAIN_NAMES):
+            x_end, y_end = polar_xy(1, i * DOMAIN_ANGLE_WIDTH)
+            spokes.append(
+                dict(
+                    type="line", xref="x", yref="y", x0=0, y0=0, x1=x_end, y1=y_end,
+                    line=dict(color="#e3ded2", width=1), layer="below",
+                )
+            )
+            x_lbl, y_lbl = polar_xy(1.06, i * DOMAIN_ANGLE_WIDTH)
+            domain_labels.append(
+                dict(
+                    x=x_lbl, y=y_lbl, text=name, showarrow=False,
+                    xanchor="left" if x_lbl > 0.05 else "right" if x_lbl < -0.05 else "center",
+                    yanchor="bottom" if y_lbl > 0.05 else "top" if y_lbl < -0.05 else "middle",
+                    font=dict(color="#002244", size=11),
+                )
+            )
+        horizon_labels = [
+            dict(
+                x=HORIZON_RADIUS[h], y=0, text=h.upper(), showarrow=False,
+                yanchor="bottom", font=dict(color="#5a6b7a", size=10),
+            )
+            for h in HORIZONS
+        ]
+        disc = dict(
+            type="circle", xref="x", yref="y", x0=-1, y0=-1, x1=1, y1=1,
+            fillcolor="#f9f5f0", line=dict(color="#5a6b7a", width=1), layer="below",
+        )
+        hidden_axis = dict(visible=False, range=[-1.45, 1.45])
         fig.update_layout(
-            polar=dict(
-                bgcolor="#f9f5f0",
-                radialaxis=dict(
-                    range=[0, 1],
-                    tickvals=[HORIZON_RADIUS[h] for h in HORIZONS],
-                    ticktext=[h.upper() for h in HORIZONS],
-                    showline=False,
-                    gridcolor="#e3ded2",
-                    tickfont=dict(color="#5a6b7a"),
-                ),
-                angularaxis=dict(
-                    tickvals=[i * DOMAIN_ANGLE_WIDTH for i in range(len(DOMAIN_NAMES))],
-                    ticktext=DOMAIN_NAMES,
-                    direction="clockwise",
-                    gridcolor="#e3ded2",
-                    tickfont=dict(color="#002244", size=11),
-                ),
-            ),
+            shapes=[disc, *rings, *spokes],
+            annotations=domain_labels + horizon_labels,
+            xaxis=hidden_axis,
+            yaxis=dict(hidden_axis, scaleanchor="x", scaleratio=1),
+            plot_bgcolor="#ffffff",
             paper_bgcolor="#ffffff",
             font=dict(color="#002244"),
             showlegend=False,
@@ -403,7 +446,7 @@ with col_radar:
             on_select="rerun",
             selection_mode="points",
         )
-        sync_selection_from_click(radar_event, label_display)
+        sync_selection_from_click(radar_event, label_display, "radar_chart")
         st.caption(
             "Ring = horizon. Sector = domain. Size = attractiveness. Color = right to win. Click a bubble to select it."
         )
@@ -469,7 +512,7 @@ with col_radar:
             on_select="rerun",
             selection_mode="points",
         )
-        sync_selection_from_click(bubble_event, label_display)
+        sync_selection_from_click(bubble_event, label_display, "bubble_chart")
         st.caption(
             "X = Attractiveness. Y = Right to win. Bubble size = market signal strength (volume proxy for market potential). Color = vertical. Click a bubble to select it in the panel on the right."
         )
