@@ -4,6 +4,8 @@ A signal-driven opportunity discovery tool built for an Orange Business use case
 
 **Live demo:** https://orangebusinessusecase.streamlit.app/
 
+![Innovation Radar dashboard: overview, radar and the top opportunity space OS013](screenshots/homepage_top_OS.png)
+
 ## Origin and credits
 
 This project started as a BeCode team assignment for an Orange Business use case, built with Hiba, Irene and Gaetan. The team's final version lives in the [team repository](https://github.com/amellalajiba-sys/Orange_use_case) and was left untouched. This repository is my own continuation of that work: after the team delivery I kept developing and improving the radar here, on my own.
@@ -12,7 +14,7 @@ What changed compared with the team's final version (`main`, 11 September 2026),
 
 | | Team version | This repository |
 |---|---|---|
-| Automated tests | 60 test functions in 2 files | 195 test functions in 13 files, run with the network blocked |
+| Automated tests | 60 tests in 2 files | 215 tests (196 test functions) in 13 files, run with the network blocked |
 | CI / deployment | none (dev container only) | GitHub Actions (tests + Docker build on every push), Dependabot, Docker, Render, live Streamlit app |
 | Attractiveness weights | hand-set 30/25/20/15/10 | derived with AHP from a pairwise-comparison sheet (consistency ratio 0.021); the hand-set weights remain an option |
 | Signal-to-space linking | 2,899 links, every space linked, no relevance check | 469 links, each sharing at least 2 keywords with the space; 32 spaces without real evidence are flagged "insufficient evidence" instead of being scored on unrelated signals |
@@ -31,7 +33,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 - **Link**: attaches signals to the opportunity space they actually support (a title must share at least 2 distinct keywords with the space's use case and technology, `radar_cli.py::MIN_KEYWORD_OVERLAP`), before any scoring happens.
 - **Score**: two independent axes — Attractiveness (market signal strength 39.7%, evidence quality 27.8%, source diversity 14.1%, strategic relevance 13.0%, novelty/momentum 5.5% — the AHP priority vector of `pipeline/ahp_weights.xlsx`, consistency ratio 0.021; the hand-set 30/25/20/15/10 remains as `--weights=manual`) and Right-to-Win (portfolio distance L0–L4) — plus a separate Urgency score, combining LLM judgment (Groq, falling back to SambaNova, then a local Ollama model) and deterministic formulas. The dashboard calls an opportunity "strong" when both axes are >= 7 (`pipeline/config.py::STRONG_THRESHOLD`); a space with no linked signal is classed "insufficient evidence" instead, whatever its scores.
 - **Promote**: recurring themes are promoted into new tracked Opportunity Spaces; a separate taxonomy-extension loop (watchlist → proposal → accepted/rejected) lets the underlying vocabulary grow over time.
-- **Visualize**: a Streamlit dashboard (polar radar + bubble view, role-based next actions) and a Power BI export for reporting.
+- **Visualize**: a Streamlit dashboard (radar + bubble view, where a click on either opens that opportunity space in the detail panel; role-based next actions; the dates of the last signal collection and scoring run under the title; a pipeline-growth section showing proposals and themes waiting to become new spaces) and a Power BI export for reporting. The page opens on the top space for the current role and filters: the best on attractiveness + right-to-win, the two axes a strong opportunity needs.
 
 ## Repository structure
 
@@ -63,7 +65,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 ├── radar_cli_top_15.py           # older CLI, kept on purpose (see docs/decisions.md)
 ├── opportunity_spaces_summary.md         # client-facing summary, all opportunity spaces (generated)
 ├── opportunity_spaces_summary_top_15.md  # same, top 15 by attractiveness (generated)
-├── screenshots/                  # dashboard screenshots
+├── screenshots/                  # dashboard screenshots (shown in the README)
 ├── conftest.py                   # repo root on sys.path + autouse fixture blocking all sockets
 ├── tests/
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
@@ -71,7 +73,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_scoring_and_db.py    # scoring formulas, DB queries, dashboard quadrants
 │   ├── test_score_history.py     # every score write kept in the history tables, current reads unchanged
 │   ├── test_taxonomy_threshold.py # one taxonomy proposal threshold for every entry point
-│   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links
+│   ├── test_dashboard.py         # Streamlit dashboard: missing DB, AI disclosure, tabs, links, chart clicks, opening view
 │   ├── test_foreign_keys.py      # foreign keys enforced, child tables repaired onto the live parent
 │   ├── test_network_guard.py     # the socket guard in conftest.py
 │   ├── test_link_keywords.py     # link needs 2 shared keywords, weak links pruned
@@ -125,7 +127,7 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 211 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 215 tests (sockets are blocked by conftest.py, so no network is possible)
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
@@ -160,6 +162,55 @@ every push.
 - **LLM reliability**: the local Ollama fallback (used when Groq and SambaNova both fail) can return malformed or incomplete JSON. I built explicit fallback branches so a missing field degrades to a documented neutral score instead of crashing or corrupting the database — covered by `tests/test_LLM.py`.
 - **Calibration on a moving dataset**: the urgency scale is re-derived on every run from the 95th percentile of the live opportunity-space population rather than hardcoded, since the dataset kept growing (133 spaces today) as sources came online. `radar_cli.py calibrate` prints signal-count percentiles to help choose how many signals `link` keeps per space. Near-duplicate signal detection still uses a fixed 0.85 similarity.
 - **Data correctness under concurrency**: SQLite timestamp collisions (two scores inserted milliseconds apart on the same machine) could silently pick the wrong "latest" score; the latest-score queries in `pipeline/db.py` use a deterministic tiebreaker (`id DESC`), and `insert_score()` updates each opportunity space's row in place, so there is one current score per space; every accepted write is also appended to `score_history` / `right_to_win_history`, so successive runs can be compared without changing what the radar reads.
+
+## Screenshots
+
+<details>
+<summary>Five more views of the dashboard (click to expand)</summary>
+
+**Top of the page**: data dates under the title, the AI-generated content notice, and the overview.
+![Top of the page](screenshots/homepage.png)
+
+**Radar**: ring = horizon, sector = domain, size = attractiveness, colour = right to win. A click on a bubble opens that space on the right.
+![Radar view](screenshots/radar.png)
+
+**Detail panel of the top space (OS013)**: attractiveness, right to win with portfolio distance, urgency, and the next action for the selected role.
+![Detail panel, OS013](screenshots/top_OS.png)
+
+**Bubble view**: attractiveness against right to win, coloured by vertical, with OS037 open in the panel.
+![Bubble view with OS037](screenshots/bubble_chart_exple_OS037.png)
+
+**Pipeline growth**: proposals and recurring themes waiting to become new opportunity spaces.
+![Pipeline growth](screenshots/pipeline_growth.png)
+
+</details>
+
+## Limitations
+
+What a reader should know before trusting a number on the dashboard. The full list, with figures, is in the [technical deep dive, §8](docs/technical_deep_dive.md#8-reproducibility-honestly-and-open-issues).
+
+- **A snapshot, not a live feed**: signals were collected up to 30 August 2026 and scored on 12 October 2026. The radar only moves when the pipeline is re-run and `radar.db` committed.
+- **Public signals only**: right-to-win is judged against Orange Business's public portfolio, not its internal offers, sales or customer data, and evidence cannot move it.
+- **LLM-generated judgements**: evidence quality, strategic relevance, right-to-win and next actions come from a language model at temperature 0. Two runs on the same signals moved 38 of 133 spaces to another right-to-win level, so they are a starting point for a human, not a measurement.
+- **Keyword links**: a signal attaches to a space when its title shares 2 keywords with it. That removes most off-topic links but leaves 32 spaces with no evidence, shown as such.
+- **Weights and thresholds are opinions made consistent, not fitted**: the AHP weights reflect one team's judgements, and the taxonomy thresholds were never calibrated, because there are no won/lost outcomes to fit them to.
+- **Two rankings coexist**: the dashboard ranks the top space on attractiveness + right-to-win, while the Power BI report and `opportunity_spaces_summary_top_15.md` still rank on attractiveness alone.
+
+## Next steps
+
+**On the radar itself**
+- Refresh signals on a schedule and keep every run in the score history, so the radar shows trends ("this space rose 2 points this month") instead of a snapshot.
+- Align the Power BI report and the top-15 summary on the dashboard's two-axis ranking.
+- Add sources in French, Dutch and German, where much of the EU public-procurement and regulatory signal is published.
+- Replace keyword links with embedding similarity checked by keywords, and measure precision on a hand-labelled sample, as was done for the 2-keyword rule.
+- Alert the owning team when a space crosses into the "strong" quadrant or when a tender deadline appears.
+
+**With Orange Business data, in an internship**
+- Connect the radar to internal data (offer catalogue, sales pipeline, customer references), so right-to-win is measured rather than inferred from public information.
+- Map the innovation work Orange Business teams already run, so the radar builds on it instead of duplicating it.
+- Run the AHP pairwise comparisons with each business unit, so the weights reflect Orange's priorities rather than a student team's, and show where the units disagree.
+- Add a feedback loop: experts mark each top opportunity as relevant or not, which gives a measurable precision ("x% of the top 15 confirmed") and the outcomes needed to calibrate the weights and thresholds.
+- Deploy inside Orange's environment (sovereign cloud, single sign-on, scheduled Power BI refresh), within the AI Act and GDPR constraints.
 
 ## Tech stack
 
