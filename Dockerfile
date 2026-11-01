@@ -11,7 +11,7 @@
 #   with no volume; docker-compose.yml mounts the host copy over it to show
 #   the latest pipeline run instead. Secrets come from .env at run time only:
 #   .dockerignore keeps it out of the image.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
