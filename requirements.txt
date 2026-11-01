@@ -8,9 +8,9 @@ python-dotenv==1.2.4
 # A floor, not an exact pin: the dashboard uses width="stretch",
 # on_select="rerun" and st.query_params, which only exist from 1.49 on, and
 # Streamlit Cloud upgrades its runtime under us, so an exact pin breaks deploys.
-streamlit>=1.65.0
+streamlit>=1.66.1
 plotly==7.1.0
-pandas==3.0.6
+pandas==3.1.0
 # Reads the AHP pairwise-comparison sheet behind the attractiveness weights.
 openpyxl==3.1.5
-pytest==9.1.1
+pytest==9.2.0
