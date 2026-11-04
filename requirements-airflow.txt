@@ -1,15 +1,16 @@
 # Apache Airflow lives in its own requirements file, separate from
 # requirements.txt, on purpose. Airflow pins a large, tightly constrained
 # dependency tree (its own versions of flask, sqlalchemy, pydantic and more)
-# that would otherwise fight the pipeline's lean, exact pins and the Streamlit
+# that would otherwise fight the pipeline's exact pins and the Streamlit
 # dashboard. The pipeline runs fine from the CLI with nothing here installed;
 # only an Airflow deployment that schedules dags/innovation_radar.py needs it.
 #
 # Install into a dedicated environment:
 #     pip install -r requirements-airflow.txt
+# Airflow 2.10 runs on Python 3.9-3.12; use a 3.12 venv, not the repo's 3.14.
 #
-# Airflow strongly recommends installing with its constraints file so the
+# Airflow recommends installing with its constraints file so the
 # transitive versions are the ones it was tested against, e.g.:
 #     pip install "apache-airflow==2.10.5" \
-#       --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.11.txt"
+#       --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
 apache-airflow>=2.9,<3.0
