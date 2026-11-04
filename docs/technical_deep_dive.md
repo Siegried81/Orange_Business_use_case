@@ -297,7 +297,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-218 tests, all passing on 16 October 2026, no network (`python -m pytest`, a few
+225 tests, all passing on 4 November 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
