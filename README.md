@@ -14,7 +14,7 @@ What changed compared with the team's final version (`main`, 11 September 2026),
 
 | | Team version | This repository |
 |---|---|---|
-| Automated tests | 60 tests in 2 files | 218 tests (199 test functions) in 13 files, run with the network blocked |
+| Automated tests | 60 tests in 2 files | 225 tests (206 test functions) in 14 files, run with the network blocked |
 | CI / deployment | none (dev container only) | GitHub Actions (tests + Docker build on every push), Dependabot, Docker, Render, live Streamlit app |
 | Attractiveness weights | hand-set 30/25/20/15/10 | derived with AHP from a pairwise-comparison sheet (consistency ratio 0.021); the hand-set weights remain an option |
 | Signal-to-space linking | 2,899 links, every space linked, no relevance check | 469 links, each sharing at least 2 keywords with the space; 32 spaces without real evidence are flagged "insufficient evidence" instead of being scored on unrelated signals |
@@ -67,6 +67,8 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 ├── opportunity_spaces_summary_top_15.md  # same, top 15 by attractiveness (generated)
 ├── screenshots/                  # dashboard screenshots (shown in the README)
 ├── conftest.py                   # repo root on sys.path + autouse fixture blocking all sockets
+├── dags/
+│   └── innovation_radar.py       # Airflow DAG: same nine stages as radar_cli.py all, @daily
 ├── tests/
 │   ├── test_LLM.py               # malformed/missing LLM output handling, key rotation
 │   ├── test_export_powerbi.py    # Power BI CSV export: dates, missing values, DataFolder check
@@ -80,7 +82,8 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 │   ├── test_ahp_weights.py       # AHP weights, consistency ratio, manual option
 │   ├── test_rtw_bonus.py         # right-to-win customer-reference bonus and its sensitivity
 │   ├── test_derive_caps.py       # market/diversity caps derived from the link volume
-│   └── test_llm_chain.py         # provider chain Groq -> SambaNova -> Ollama
+│   ├── test_llm_chain.py         # provider chain Groq -> SambaNova -> Ollama
+│   └── test_dag_innovation_radar.py # DAG task ids, chain, cwd and catchup
 ├── scripts/                      # one-off analysis scripts, run from the repo root
 │   ├── export_powerbi.py         # radar.db -> app/powerbi_data/*.csv for Power BI
 │   ├── analyze_healthcare.py     # vertical deep-dive report
@@ -93,6 +96,7 @@ I built a pipeline that turns scattered external signals into scored, ranked opp
 ├── radar.db                      # SQLite database (6.8 MB, tracked on purpose: Streamlit Cloud deploys from the repo and cannot run the pipeline)
 ├── .env.example                   # required environment variables (no real keys)
 ├── requirements.txt
+├── requirements-airflow.txt      # Airflow only, in its own venv (see the file's header)
 └── README.md
 ```
 
@@ -110,6 +114,8 @@ cp .env.example .env   # fill in your own API keys
 ```bash
 python radar_cli.py all            # db -> ingest -> analyze -> extend_taxonomy -> create -> promote -> link -> scoring -> summary
 python -m streamlit run app/streamlit_app.py
+# Under Airflow (separate venv, Python 3.12): point dags_folder at ./dags
+pip install -r requirements-airflow.txt
 ```
 
 Individual steps:
@@ -127,7 +133,8 @@ python -m pipeline.scoring --rescue-fallback   # re-score the spaces still sitti
 python radar_cli.py summary        # write opportunity_spaces_summary.md
 python radar_cli.py summary --top 15 --output opportunity_spaces_summary_top_15.md
 python radar_cli.py review         # approve/reject taxonomy proposals
-python -m pytest                   # run the 218 tests (sockets are blocked by conftest.py, so no network is possible)
+python -m pytest                   # run the 225 tests (sockets are blocked by conftest.py, so no network is possible)
+                                   # the DAG tests run against a stub Airflow when the real one isn't installed
 ```
 
 Power BI dashboard (Power BI has no SQLite connector, so it reads a CSV export):
@@ -154,8 +161,9 @@ the value to use when it does not match.
   `requirements.txt` and `.streamlit/config.toml` are read as they are, and
   the dashboard needs no secret.
 
-CI (`.github/workflows/tests.yml`) runs the suite and builds the image on
-every push.
+CI (`.github/workflows/tests.yml`) runs the suite, runs the DAG tests again
+against the real Airflow 2.10 on Python 3.12, and builds the image on every
+push.
 
 ## Key challenges
 
@@ -198,7 +206,7 @@ What a reader should know before trusting a number on the dashboard. The full li
 ## Next steps
 
 **On the radar itself**
-- Refresh signals on a schedule and keep every run in the score history, so the radar shows trends ("this space rose 2 points this month") instead of a snapshot.
+- Run the Airflow DAG on a real schedule and keep every run in the score history, so the radar shows trends ("this space rose 2 points this month") instead of a snapshot.
 - Align the Power BI report and the top-15 summary on the dashboard's two-axis ranking.
 - Add sources in French, Dutch and German, where much of the EU public-procurement and regulatory signal is published.
 - Replace keyword links with embedding similarity checked by keywords, and measure precision on a hand-labelled sample, as was done for the 2-keyword rule.
