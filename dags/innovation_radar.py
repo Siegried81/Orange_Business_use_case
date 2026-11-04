@@ -115,10 +115,17 @@ def _run_score():
 
     force=False scores only the unscored spaces and repairs incomplete ones,
     which is the safe-to-re-run default `cmd_all` uses without `--force`.
+
+    score_all_opportunity_spaces returns a truthy "refused" when the LLM never
+    answered. `python -m pipeline.scoring` treats that as a failed run (exit 1),
+    and `cmd_all` then stops before summary. The DAG must do the same: raise so
+    the task fails and the downstream summary does not run on an un-scored board.
     """
     from pipeline.scoring import score_all_opportunity_spaces
 
-    score_all_opportunity_spaces(force=False)
+    refused = score_all_opportunity_spaces(force=False)
+    if refused:
+        raise RuntimeError("scoring refused: the LLM never answered (see logs)")
 
 
 def _run_summary():
