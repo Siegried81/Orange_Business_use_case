@@ -13,29 +13,52 @@ The task order and dependencies mirror `radar_cli.cmd_all` exactly:
 
 The stage functions are imported lazily inside each callable, not at module
 top level, for two reasons. The scheduler re-parses every DAG file on a short
-interval, and the pipeline imports (groq, feedparser, pandas, the SQLite layer)
+interval, and the pipeline imports (feedparser, the LLM client, the SQLite layer)
 are expensive and only needed when a task actually runs. It also lets the DAG
 be imported for a structural test (task ids, dependencies) on a machine where
 the pipeline's own dependencies are not installed.
 """
+import functools
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from airflow import DAG
 
-# PythonOperator moved packages in Airflow 3; support both.
+# PythonOperator moved packages in Airflow 3; the fallback keeps 2.x working.
 try:
     from airflow.providers.standard.operators.python import PythonOperator
 except ImportError:  # Airflow 2.x
     from airflow.operators.python import PythonOperator
 
 # The repo root (parent of this dags/ folder) must be importable so the task
-# callables can reach `radar_cli` and the `pipeline` package regardless of how
-# Airflow loads this file.
+# callables can reach `radar_cli` and the `pipeline` package. Point Airflow's
+# dags_folder at <repo>/dags or symlink it; copying this file elsewhere breaks
+# the import.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+
+def _from_repo_root(fn):
+    """Return `fn` wrapped so it runs with the repo root as working directory.
+
+    `pipeline.config.DB_PATH` is the relative "radar.db" and `cmd_summary`
+    writes its markdown to a relative default path too. From the CLI the
+    working directory is the repo root, so both land next to the code. An
+    Airflow worker keeps whatever working directory it was started in, so
+    without this chdir `init_db` creates an empty radar.db wherever the worker
+    is and every later stage reads and scores that empty database.
+    `functools.wraps` keeps `fn.__name__` for Airflow's logs.
+    """
+
+    @functools.wraps(fn)
+    def run():
+        os.chdir(REPO_ROOT)
+        return fn()
+
+    return run
 
 
 # --- task callables -------------------------------------------------------
@@ -119,7 +142,7 @@ def _run_score():
     score_all_opportunity_spaces returns a truthy "refused" when the LLM never
     answered. `python -m pipeline.scoring` treats that as a failed run (exit 1),
     and `cmd_all` then stops before summary. The DAG must do the same: raise so
-    the task fails and the downstream summary does not run on an un-scored board.
+    the task fails and the downstream summary does not run on an unscored board.
     """
     from pipeline.scoring import score_all_opportunity_spaces
 
@@ -150,8 +173,11 @@ default_args = {
 
 with DAG(
     dag_id="innovation_radar",
-    description="Innovation Radar batch pipeline: ingest -> link -> score -> promote.",
-    # Daily is enough: the market-signal feeds refresh on the order of a day,
+    description=(
+        "Innovation Radar batch pipeline: "
+        "ingest -> analyze -> create/promote -> link -> score -> summary."
+    ),
+    # Daily is enough: the market-signal feeds refresh about once a day,
     # and the scoring stage calls a rate-limited LLM, so a tighter cadence buys
     # nothing. catchup=False because the pipeline reads the live state of each
     # source, not a per-day partition -- there is no backfill to replay.
@@ -162,17 +188,34 @@ with DAG(
     max_active_runs=1,
     tags=["innovation-radar", "batch"],
 ) as dag:
-    init_db = PythonOperator(task_id="init_db", python_callable=_run_init_db)
-    ingest = PythonOperator(task_id="ingest", python_callable=_run_ingest)
-    analyze = PythonOperator(task_id="analyze", python_callable=_run_analyze)
-    extend_taxonomy = PythonOperator(
-        task_id="extend_taxonomy", python_callable=_run_extend_taxonomy
+    init_db = PythonOperator(
+        task_id="init_db", python_callable=_from_repo_root(_run_init_db)
     )
-    create = PythonOperator(task_id="create", python_callable=_run_create)
-    promote = PythonOperator(task_id="promote", python_callable=_run_promote)
-    link = PythonOperator(task_id="link", python_callable=_run_link)
-    score = PythonOperator(task_id="score", python_callable=_run_score)
-    summary = PythonOperator(task_id="summary", python_callable=_run_summary)
+    ingest = PythonOperator(
+        task_id="ingest", python_callable=_from_repo_root(_run_ingest)
+    )
+    analyze = PythonOperator(
+        task_id="analyze", python_callable=_from_repo_root(_run_analyze)
+    )
+    extend_taxonomy = PythonOperator(
+        task_id="extend_taxonomy",
+        python_callable=_from_repo_root(_run_extend_taxonomy),
+    )
+    create = PythonOperator(
+        task_id="create", python_callable=_from_repo_root(_run_create)
+    )
+    promote = PythonOperator(
+        task_id="promote", python_callable=_from_repo_root(_run_promote)
+    )
+    link = PythonOperator(
+        task_id="link", python_callable=_from_repo_root(_run_link)
+    )
+    score = PythonOperator(
+        task_id="score", python_callable=_from_repo_root(_run_score)
+    )
+    summary = PythonOperator(
+        task_id="summary", python_callable=_from_repo_root(_run_summary)
+    )
 
     (
         init_db

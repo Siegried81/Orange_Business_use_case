@@ -22,6 +22,25 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
 
+  # The job above runs the DAG tests against a stub Airflow (the real one is
+  # not in requirements.txt). This one runs them against Airflow 2.10 itself,
+  # on a Python it supports, with the constraints file it was tested with.
+  # Airflow goes in first, under its constraints file; the pipeline's own
+  # pins come after, without it. The other order let the constraints file
+  # downgrade typing_extensions under the pydantic_core that requirements.txt
+  # had just installed, and every import then failed.
+  airflow-dag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-airflow.txt --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/test_dag_innovation_radar.py -q
+
   docker:
     runs-on: ubuntu-latest
     steps:

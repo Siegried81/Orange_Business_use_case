@@ -471,3 +471,35 @@ produced by the previous prompt until the next `radar_cli.py` scoring run.
 - **Revisit if:** right-to-win is scored against internal data; a combined
   ranking then becomes defensible.
 
+## 2026-11-04 — An Airflow DAG runs the pipeline, from the repo root
+
+- **What:** `dags/innovation_radar.py` schedules the nine stages of
+  `radar_cli.py all` (init_db, ingest, analyze, extend_taxonomy, create,
+  promote, link, score, summary) as one `@daily` DAG, `catchup=False`, one
+  `PythonOperator` per stage, each a thin call to the existing entry point.
+  Airflow stays out of `requirements.txt`: it lives in
+  `requirements-airflow.txt`, for a separate Python 3.12 venv.
+- **Why:** the pipeline only ran by hand, so the radar was a snapshot (the
+  README's first limitation). Reusing `cmd_all`'s order under a scheduler
+  keeps one definition of the run and lets `score_history` fill up over time.
+- **The cwd fix:** `pipeline.config.DB_PATH` is the relative `"radar.db"`
+  and `cmd_summary` writes to a relative default path. From the CLI the
+  working directory is the repo root; an Airflow worker keeps whatever
+  directory it was started in, so `init_db` would have created an empty
+  `radar.db` there and every later stage would have read and scored it.
+  `_from_repo_root()` now wraps all nine callables with
+  `os.chdir(REPO_ROOT)`. Shown on the pre-fix file: calling the `init_db`
+  task recorded no `chdir`; after the fix it records the repo root first.
+- **Tests:** `tests/test_dag_innovation_radar.py` used to skip as a whole
+  without Airflow (218 passed, 1 skipped). It now installs a stub `airflow`
+  (a `DAG` context manager and a `PythonOperator` with `>>`) when the real
+  one is absent, so its 7 tests run in the repo's venv: 225 passed, 0
+  skipped. A second CI job installs Airflow 2.10 on Python 3.12 and runs the
+  same file against the real classes.
+- **Changes the numbers:** none. No score, link or export moves; the DAG
+  calls the same functions `radar_cli.py all` does.
+- **Revisit if:** the pipeline gets a `--db` option or an absolute
+  `DB_PATH`, which would make the chdir redundant; or Airflow 3 becomes the
+  target, where `schedule` and the operator import path are the two things
+  to check first.
+
