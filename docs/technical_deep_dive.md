@@ -321,7 +321,8 @@ reaching the internet.
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
 monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`)
-runs the suite on Python 3.12 on every push.
+runs the suite on Python 3.12 on every push, then again inside the Docker
+image on the image's own Python (3.15 today).
 
 ---
 
