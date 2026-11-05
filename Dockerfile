@@ -1,8 +1,10 @@
 # Container image for the Innovation Radar dashboard (Streamlit) and pipeline.
 #
 # Why it is built this way:
-# - python:3.12-slim: a small Debian base with wheels for every pinned
+# - python:3.15-slim: a small Debian base with wheels for every pinned
 #   dependency (pandas, plotly, streamlit), so no compiler is installed.
+#   CI runs pytest on Python 3.12, then the docker job runs the same suite
+#   inside this image, so the Python version here is tested too.
 # - requirements.txt is installed BEFORE the source is copied, so a code change
 #   rebuilds only the last, cheap layer.
 # - The app runs as an unprivileged user, so a dependency or a prompt gone

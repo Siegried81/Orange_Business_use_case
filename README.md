@@ -163,7 +163,8 @@ the value to use when it does not match.
 
 CI (`.github/workflows/tests.yml`) runs the suite, runs the DAG tests again
 against the real Airflow 2.10 on Python 3.12, and builds the image on every
-push.
+push. The suite then runs a second time inside that image, on the image's own
+Python, so a bump of the base image can't break the dashboard unnoticed.
 
 ## Key challenges
 
