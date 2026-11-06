@@ -297,7 +297,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-225 tests, all passing on 4 November 2026, no network (`python -m pytest`, a few
+225 tests in 14 files, all passing on 6 November 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -318,6 +318,7 @@ reaching the internet.
 | `tests/test_derive_caps.py` | 6 | Cap derivation: mid-rank percentile with ties, inclusive quantile, both link rules replayed without writing, and the constants in `scoring.py` equal to the derivation on `radar.db`. |
 | `tests/test_llm_chain.py` | 8 | Provider chain Groq → SambaNova → Ollama: order, fall-through, last error raised, one named provider alone, no Cerebras left. |
 | `tests/test_rtw_bonus.py` | 7 | Customer-reference bonus: documented defaults, per-reference and cap, configurable value reaching the stored score, and the sensitivity counts. |
+| `tests/test_dag_innovation_radar.py` | 7 | Airflow DAG structure: the task ids, the dependency chain between them, and every task callable moving to the repo root before it runs. The `pytest` job runs it against a minimal stub Airflow, since Airflow is not in `requirements.txt`; the `airflow-dag` job in `.github/workflows/tests.yml` runs the same file against the real Airflow 2.10. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
 monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`)
