@@ -2,9 +2,9 @@
 
 This does not run the scheduler, touch the network or execute any stage. It
 imports the DAG object and asserts what breaks silently when the file is
-edited: the set of task ids, the dependency chain between them, and that every
-task callable moves to the repo root before it runs (the pipeline's
-`DB_PATH` is the relative "radar.db").
+edited: the set of task ids, the dependency chain between them, that every
+task callable moves to the repo root before it runs, and that the summary is
+written to an absolute path so it does not depend on that chdir.
 
 Airflow is a heavy, optional dependency kept out of requirements.txt (see
 requirements-airflow.txt), and the repo's own venv runs a Python it does not
@@ -159,7 +159,7 @@ def test_every_task_callable_is_wrapped_to_run_from_repo_root(dag):
 
 
 def test_task_callable_moves_to_repo_root_before_the_stage_runs(dag, monkeypatch):
-    """The chdir must happen first, or init_db creates an empty radar.db in the worker's cwd."""
+    """The chdir happens before the stage, so a relative path a stage adds lands in the repo."""
     import pipeline.db
     from dags.innovation_radar import REPO_ROOT
 
@@ -171,3 +171,23 @@ def test_task_callable_moves_to_repo_root_before_the_stage_runs(dag, monkeypatch
 
     assert calls == [REPO_ROOT, "init_db"]
     assert (REPO_ROOT / "radar_cli.py").is_file()
+
+def test_summary_is_written_to_an_absolute_path_in_the_repo(dag, monkeypatch):
+    """cmd_summary's default output path is relative; the DAG passes the repo one."""
+    import radar_cli
+    import pipeline.db
+    from dags.innovation_radar import REPO_ROOT
+
+    seen = {}
+
+    class _Conn:
+        def close(self):
+            pass
+
+    monkeypatch.setattr(os, "chdir", lambda path: None)
+    monkeypatch.setattr(pipeline.db, "get_connection", lambda: _Conn())
+    monkeypatch.setattr(radar_cli, "cmd_summary", lambda conn, output_path=None, **kw: seen.update(path=output_path))
+
+    dag.get_task("summary").python_callable()
+
+    assert seen["path"] == str(REPO_ROOT / "opportunity_spaces_summary.md")

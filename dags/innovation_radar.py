@@ -44,12 +44,11 @@ if str(REPO_ROOT) not in sys.path:
 def _from_repo_root(fn):
     """Return `fn` wrapped so it runs with the repo root as working directory.
 
-    `pipeline.config.DB_PATH` is the relative "radar.db" and `cmd_summary`
-    writes its markdown to a relative default path too. From the CLI the
-    working directory is the repo root, so both land next to the code. An
-    Airflow worker keeps whatever working directory it was started in, so
-    without this chdir `init_db` creates an empty radar.db wherever the worker
-    is and every later stage reads and scores that empty database.
+    An Airflow worker keeps whatever working directory it was started in.
+    Every path the stages use is already absolute (`pipeline.config.DB_PATH`,
+    the ingest logs, the summary path passed by `_run_summary`), so nothing
+    depends on this chdir; it stays so that any relative path a stage adds
+    later still lands next to the code, as it does from the CLI.
     `functools.wraps` keeps `fn.__name__` for Airflow's logs.
     """
 
@@ -152,13 +151,17 @@ def _run_score():
 
 
 def _run_summary():
-    """Write the client-facing markdown summary (mirrors `radar_cli.py summary`)."""
+    """Write the client-facing markdown summary (mirrors `radar_cli.py summary`).
+
+    The output path is given absolute: `cmd_summary`'s default is relative to
+    the working directory, which on a worker is not the repo.
+    """
     from pipeline.db import get_connection
     from radar_cli import cmd_summary
 
     conn = get_connection()
     try:
-        cmd_summary(conn)
+        cmd_summary(conn, output_path=str(REPO_ROOT / "opportunity_spaces_summary.md"))
     finally:
         conn.close()
 

@@ -862,7 +862,7 @@ class TestFeedFetchTimeout:
 
         def fake_get(url, **kwargs):
             calls["url"], calls["kwargs"] = url, kwargs
-            return SimpleNamespace(content=rss)
+            return SimpleNamespace(content=rss, raise_for_status=lambda: None)
 
         monkeypatch.setattr(ingest.requests, "get", fake_get)
         feed = ingest._parse_feed("https://example.test/feed")
@@ -879,3 +879,130 @@ class TestFeedFetchTimeout:
         monkeypatch.setattr(ingest.requests, "get", fake_get)
         with pytest.raises(requests.Timeout):
             ingest._parse_feed("https://example.test/feed")
+
+
+    def test_an_http_error_page_is_a_source_failure_not_an_empty_feed(self, db_conn, monkeypatch):
+        """A 429/503 page parsed as a feed has no entries, so the source logged
+        "+0 new signals" as if it had answered with nothing."""
+        import requests
+        from pipeline import ingest
+
+        error_page = requests.Response()
+        error_page.status_code = 503
+        error_page._content = b"<html><body>Service Unavailable</body></html>"
+        error_page.url = "https://news.google.com/rss/search"
+        monkeypatch.setattr(ingest.requests, "get", lambda url, **kwargs: error_page)
+        with pytest.raises(requests.HTTPError):
+            ingest.fetch_google_news(db_conn, "Manufacturing", "private 5G")
+
+
+class TestRescueUsesTheRunScalingPoint:
+    """`--rescue-fallback` rescored urgency against the static URGENCY_CAP
+    (6.0) while every other path scales against the 95th percentile of the
+    scored population (1.76 on radar.db), so a rescued space read about a
+    third of the urgency its signals earn."""
+
+    def test_rescued_urgency_matches_the_population_scaling_point(self, db_conn, monkeypatch):
+        from pipeline import scoring
+        from pipeline.db import migrate_schema
+
+        migrate_schema(db_conn)
+        now = datetime.now(timezone.utc)
+        real = {"market_signal_strength": 5, "source_diversity": 5, "evidence_quality": 5,
+                "novelty_momentum": 5, "strategic_relevance": 5}
+        ids = []
+        for label, n_regulations, justification in (
+            ("OS001", 2, "real"), ("OS002", 2, "real"),
+            ("OS003", 1, "LLM scoring unavailable -- neutral default used."),
+        ):
+            os_id = _insert_opportunity_space(db_conn, label)
+            ids.append(os_id)
+            for i in range(n_regulations):
+                _insert_and_link_signal(db_conn, os_id, f"https://x/{label}/{i}", "regulation", 10, now)
+            insert_score(db_conn, os_id, real, 5.0,
+                         evidence_quality_justification=justification,
+                         strategic_relevance_justification=justification,
+                         urgency_score=0.0)
+            insert_right_to_win_score(db_conn, os_id, "L1", 6.0, "API X", "real")
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: {
+            "score": 7, "justification": "ok", "portfolio_distance": "L1",
+            "right_to_win_score": 6.0, "role": "Sales", "domain": "Cloud",
+        })
+
+        expected_point = compute_urgency_scaling_point(db_conn)
+        scoring.rescue_fallback_scores(db_conn)
+
+        rescued = db_conn.execute(
+            "SELECT urgency_score FROM scores WHERE opportunity_space_id = ?", (ids[2],)
+        ).fetchone()["urgency_score"]
+        signals = get_linked_signals_for_opportunity_space(db_conn, ids[2])
+        assert expected_point != URGENCY_CAP
+        assert rescued == urgency_score(signals, scaling_point=expected_point)
+
+
+class TestFallbackEnrichmentKeepsRealValues:
+    """When no LLM answers, llm_enrich() returns "review manually" next actions
+    and horizon "Later". COALESCE only protected the None fields, so a rescue
+    or a --force run with the LLM down overwrote real next actions and moved
+    the space to the "Later" ring."""
+
+    def _space(self, conn):
+        from pipeline.db import migrate_schema, update_opportunity_space_enrichment
+
+        migrate_schema(conn)
+        os_id = _insert_opportunity_space(conn, "OS001")
+        update_opportunity_space_enrichment(
+            conn, os_id, role="Sales", buyer_persona="CIOs", geography="Benelux",
+            horizon="Next", domain="Cloud", next_action_strategist="Brief the board",
+            next_action_sales="Call the CIO", next_action_presales="Draft the bid",
+        )
+        return os_id
+
+    def _row(self, conn, os_id):
+        return conn.execute("SELECT * FROM opportunity_spaces WHERE id = ?", (os_id,)).fetchone()
+
+    def test_fallback_enrichment_does_not_overwrite_real_values(self, db_conn, monkeypatch):
+        from pipeline import scoring
+        from pipeline.db import update_opportunity_space_enrichment
+
+        os_id = self._space(db_conn)
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: None)
+        e = scoring.llm_enrich("Manufacturing", "Energy Optimization", "IoT Platforms", [])
+        update_opportunity_space_enrichment(
+            db_conn, os_id, role=e["role"], buyer_persona=e["buyer_persona"],
+            geography=e["geography"], horizon=e["horizon"], domain=e["domain"],
+            next_action_strategist=e["next_action_strategist"],
+            next_action_sales=e["next_action_sales"],
+            next_action_presales=e["next_action_presales"],
+        )
+        row = self._row(db_conn, os_id)
+        assert row["horizon"] == "Next"
+        assert row["next_action_sales"] == "Call the CIO"
+        assert row["next_action_presales"] == "Draft the bid"
+
+    def test_fallback_still_fills_an_empty_space(self, db_conn, monkeypatch):
+        from pipeline import scoring
+        from pipeline.db import migrate_schema, update_opportunity_space_enrichment
+
+        migrate_schema(db_conn)
+        os_id = _insert_opportunity_space(db_conn, "OS002")
+        monkeypatch.setattr(scoring, "get_llm_json", lambda *a, **k: None)
+        e = scoring.llm_enrich("Manufacturing", "Energy Optimization", "IoT Platforms", [])
+        update_opportunity_space_enrichment(
+            db_conn, os_id, horizon=e["horizon"],
+            next_action_sales=e["next_action_sales"],
+        )
+        row = self._row(db_conn, os_id)
+        assert row["horizon"] == "Later"
+        assert "unavailable" in row["next_action_sales"]
+
+    def test_a_real_answer_still_replaces_real_values(self, db_conn):
+        from pipeline.db import update_opportunity_space_enrichment
+
+        os_id = self._space(db_conn)
+        update_opportunity_space_enrichment(
+            db_conn, os_id, horizon="Now", next_action_sales="Send the offer",
+        )
+        row = self._row(db_conn, os_id)
+        assert row["horizon"] == "Now"
+        assert row["next_action_sales"] == "Send the offer"

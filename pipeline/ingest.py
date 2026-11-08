@@ -42,7 +42,9 @@ GDELT_DOC_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 HN_ALGOLIA_URL = "https://hn.algolia.com/api/v1/search"
 ARXIV_API_URL = "https://export.arxiv.org/api/query"
 SEMANTIC_SCHOLAR_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
-LOGS_DIR = "logs"
+# Anchored on the repo root like DB_PATH, so the source cooldowns survive a run
+# started from another working directory instead of being forgotten there.
+LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
 COOLDOWN_FILE = os.path.join(LOGS_DIR, ".source_cooldowns.json")
 
 
@@ -111,6 +113,9 @@ def _parse_feed(url):
     resp = requests.get(
         url, headers={"User-Agent": feedparser.USER_AGENT}, timeout=FEED_TIMEOUT_SECONDS
     )
+    # An error page (429, 503) parses as a feed with no entries, which would
+    # read as "this source had nothing new" instead of "this source failed".
+    resp.raise_for_status()
     return feedparser.parse(resp.content)
 
 

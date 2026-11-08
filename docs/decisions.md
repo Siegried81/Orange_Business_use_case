@@ -503,3 +503,41 @@ produced by the previous prompt until the next `radar_cli.py` scoring run.
   target, where `schedule` and the operator import path are the two things
   to check first.
 
+## 2026-11-08: Audit, repo-anchored paths and four fallbacks that gave a wrong number
+
+- **Paths:** `pipeline.config.DB_PATH` is now `<repo>/radar.db`, absolute,
+  instead of the relative `"radar.db"`, and `pipeline.ingest.LOGS_DIR` is
+  `<repo>/logs`. Opening the database from another working directory used to
+  create an empty `radar.db` there (shown by `tests/test_db_path.py`, which
+  failed 3 of 3 before the change). The DAG's summary task now passes an
+  absolute output path. The `_from_repo_root` chdir in the DAG stays, but
+  nothing depends on it any more. No environment override was added: the
+  scripts in `scripts/` read the repo `radar.db` too, and an override would
+  have let the pipeline and those scripts read two different files.
+- **Urgency of a rescued space:** `python -m pipeline.scoring
+  --rescue-fallback` scored urgency against the static `URGENCY_CAP` (6.0)
+  while every other path uses the 95th percentile of the scored population
+  (1.76 on the committed `radar.db`). In the test case a rescued space read
+  1.67 instead of 5.0. It now uses `compute_urgency_scaling_point`.
+  **Changes the numbers:** urgency of any space rescued from now on. Nothing
+  stored in `radar.db` moves; no rescue ran on it.
+- **Fallback enrichment:** with no LLM answering, `llm_enrich()` returns
+  "review manually" next actions and horizon "Later", and
+  `update_opportunity_space_enrichment` let them overwrite real values on a
+  `--force` or `--rescue-fallback` run. An enrichment whose next actions carry
+  `FALLBACK_MARKER` now only fills empty fields, the rule `insert_score()`
+  already applies to scores. Committed `radar.db`: 0 fallback next actions,
+  so nothing moves.
+- **Presales view:** the dashboard filled a missing owning team with
+  "Unassigned" after the Presales copy of the table was taken, so on that
+  role a space with no persona fell out of the filter. On a copy of
+  `radar.db` with one L0 to L2 space set to no persona, Presales showed 84 of
+  the 85 spaces before, 85 after. The fill moved into `load_scores()`.
+- **Feed errors:** `_parse_feed` handed a 429 or 503 error page to
+  feedparser, which found no entry, so the source logged "+0 new signals"
+  instead of failing. It now raises on an HTTP error status and `safe_run`
+  reports the source as failed. No stored signal changes.
+- **Tests:** 225 passed before, 235 passed after (10 new tests, 15 files).
+- **Revisit if:** the pipeline needs to run against another database file;
+  then add one override read by `pipeline.config` and by every script.
+

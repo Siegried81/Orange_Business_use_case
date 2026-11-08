@@ -850,8 +850,13 @@ def rescue_fallback_scores(conn=None):
     print(
         f"Rescuing {len(spaces)} opportunity space(s) that got a neutral fallback score (Groq quota was exhausted when they were first scored):\n"
     )
+    # Same scale as every other scoring path: the 95th percentile of the scored
+    # population, not the static URGENCY_CAP default of score_opportunity_space.
+    urgency_scaling_point = compute_urgency_scaling_point(conn)
     for space in spaces:
-        sub_scores, total, urgency, written = score_opportunity_space(conn, space)
+        sub_scores, total, urgency, written = score_opportunity_space(
+            conn, space, urgency_scaling_point=urgency_scaling_point
+        )
         distance, rtw_score, assets, rtw_justification = llm_right_to_win(
             space["vertical"], space["use_case"], space["technology"]
         )
