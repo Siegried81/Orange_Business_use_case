@@ -217,19 +217,19 @@ same rule (`Insufficient Evidence`) from the `linked_signals` column of
 
 | Module | Lines | What it owns |
 |---|---|---|
-| `pipeline/config.py` | 599 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
-| `pipeline/ingest.py` | 627 | One fetcher per source, `safe_run()` isolation, RSS/Atom feeds downloaded with a timeout (`FEED_TIMEOUT_SECONDS`), GDELT and Semantic Scholar disk-backed cooldowns (`logs/.source_cooldowns.json`), timestamped run log. |
+| `pipeline/config.py` | 603 | Verticals and their search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), all source queries and rate-limit settings, the Orange Business catalog (17 assets, 18 customer references, 5 analyst facts, 12 capability stats), roles, personas, geographies, `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
+| `pipeline/ingest.py` | 632 | One fetcher per source, `safe_run()` isolation, RSS/Atom feeds downloaded with a timeout (`FEED_TIMEOUT_SECONDS`), GDELT and Semantic Scholar disk-backed cooldowns (`logs/.source_cooldowns.json`), timestamped run log. |
 | `pipeline/analyze.py` | 201 | Theme extraction: `_call_theme_extraction_llm()` (the only LLM boundary), `_classify_themes()` (pure, unit-tested), thin orchestrator; `--from=` resumes after a quota stop. |
 | `pipeline/theme_promotion.py` | 46 | Tracks valid themes across runs; feeds `promote`. |
 | `pipeline/extend_taxonomy.py` | 212 | Watchlist term → proposal once frequency ≥ `TAXONOMY_PROPOSAL_THRESHOLD` (5, in `config.py`). |
 | `pipeline/taxonomy_validation.py` | 6 | Rejects bare generic terms ("AI") while keeping compounds ("Generative AI"). |
 | `pipeline/ahp.py` | 98 | AHP priority vector and consistency ratio from `pipeline/ahp_weights.xlsx`; refuses CR >= 0.10. |
-| `pipeline/scoring.py` | 924 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
-| `pipeline/db.py` | 757 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker, foreign-key repair, append-only score history. |
-| `llm/llm_client.py` | 234 | Provider chain, Groq key rotation, JSON extraction. |
+| `pipeline/scoring.py` | 929 | Every formula in §2, the four LLM calls, `--force`, `--from/--to`, `--refresh`, `--recalibrate-*`, `--rescue-fallback`, `--prune-scores`, automatic deterministic refresh of scores older than 3 days. |
+| `pipeline/db.py` | 778 | Schema, all queries, duplicate-triple cleanup + `UNIQUE` index, latest-score queries with an `id DESC` tiebreaker, foreign-key repair, append-only score history. |
+| `llm/llm_client.py` | 231 | Provider chain, Groq key rotation, JSON extraction. |
 | `radar_cli.py` | 667 | `create`, `promote`, `link`, `summary [--top N] [--output PATH]`, `review`, `watchlist`, `themes`, `calibrate`, `dedupe`, `delete`, `scores`, `all`. |
 | `app/streamlit_app.py` | 878 | Radar (drawn on cartesian axes so clicks register) and bubble views, opening on the most attractive space (right-to-win shown as provisional), data dates under the title, a pipeline-growth section, sidebar filters (vertical, domain, horizon, owning team, buyer persona, geography), per-OS breakdown and next actions per role. |
-| `radar_cli_top_15.py`, `pipeline/signals_discovery.py` | 518, 58 | Older CLI and its copy of `theme_promotion`, kept on purpose (see `decisions.md`). |
+| `radar_cli_top_15.py`, `pipeline/signals_discovery.py` | 517, 58 | Older CLI and its copy of `theme_promotion`, kept on purpose (see `decisions.md`). |
 | `scripts/` | | One-off healthcare analysis, run from the repo root. |
 | `scripts/derive_caps.py` | 110 | Re-derives `MARKET_SIGNAL_CAP` and `SOURCE_DIVERSITY_CAP` from the link volume of both keyword rules (§2.1); read-only. |
 | `scripts/rtw_bonus_sensitivity.py` | 110 | Re-applies other customer-reference bonus values to the stored right-to-win scores and counts what moves (§2.2); read-only, no LLM. |
@@ -297,7 +297,7 @@ of the LLM on purpose.
 
 ## 5. Testing
 
-225 tests in 14 files, all passing on 6 November 2026, no network (`python -m pytest`, a few
+235 tests in 15 files, all passing on 8 November 2026, no network (`python -m pytest`, a few
 seconds). "No network" is now enforced rather than reviewed: an autouse fixture in
 `conftest.py` makes `socket.connect` / `create_connection` raise, so a test that
 forgets to mock its feed or LLM call fails with an explicit message instead of
@@ -307,8 +307,8 @@ reaching the internet.
 |---|---|---|
 | `tests/test_LLM.py` | 58 | Malformed LLM output across `analyze`, `scoring`, `extend_taxonomy`; generic-term filter; key rotation; non-numeric scores ("high") coerced to a marked neutral instead of raising; `nan`/`inf` sent to the fallback and out-of-range scores clamped to 0–10; signal titles fenced and unable to close the fence; `portfolio_distance` validated against L0–L4; the network block itself. |
 | `tests/test_export_powerbi.py` | 19 | Power BI export: date formats to UTC, missing stays empty (never 0), unparseable dates reported, stable header with no rows, HTML summaries to text, `DataFolder` mismatch warning, read-only DB, the linked-signal count and the model's Insufficient Evidence quadrant. |
-| `tests/test_scoring_and_db.py` | 57 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants (including insufficient evidence), summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, the refusal to overwrite a real score with a fallback, and the feed download timeout. |
-| `tests/test_dashboard.py` | 25 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, the not-enough-evidence count in the overview, each tab opened exactly once, an all-NaN top-opportunity selection, which `source_url` values become links, a chart click selecting its space without a stale pick on the other chart overriding it, the page opening on the top space on both axes, the data-freshness caption, the pipeline-growth counts (only terms still below the proposal threshold) and a space without right-to-win never being the top one. |
+| `tests/test_scoring_and_db.py` | 62 | Novelty, urgency scaling and caps, latest-score queries, deletes, deterministic refresh (LLM fields untouched, row updated in place), watchlist guard, quadrants (including insufficient evidence), summary header under `--top`, rounded sub-scores, urgency wording in the summary, one source name for TED, removal of old non-tech links, the refusal to overwrite a real score with a fallback, the same refusal for a fallback enrichment, `--rescue-fallback` scaling urgency like every other path, and the feed download timeout and HTTP error status. |
+| `tests/test_dashboard.py` | 26 | Dashboard, through Streamlit's `AppTest`: missing `radar.db` reported as an error with the pipeline hint, the AI-generated disclosure rendered on the page, the not-enough-evidence count in the overview, each tab opened exactly once, an all-NaN top-opportunity selection, which `source_url` values become links, a chart click selecting its space without a stale pick on the other chart overriding it, the page opening on the top space on both axes, the data-freshness caption, the pipeline-growth counts (only terms still below the proposal threshold), a space without right-to-win never being the top one, and a space without an owning team still counted under the Presales role. |
 | `tests/test_score_history.py` | 8 | Score history: every accepted write appended while `scores` keeps one row, a refused fallback leaves no trace, right-to-win history, the one-time baseline, history surviving a deleted OS, `init_db()` on a new database, and latest-score reads unchanged on a copy of the committed `radar.db`. |
 | `tests/test_taxonomy_threshold.py` | 5 | One proposal threshold: both defaults read `TAXONOMY_PROPOSAL_THRESHOLD`, a call without a threshold proposes the same terms as the pipeline, an explicit threshold still wins. |
 | `tests/test_foreign_keys.py` | 4 | The replayed migration that left child tables pointing at a dropped parent, the repair, foreign keys on every connection, no violation left in a copy of `radar.db`. |
@@ -318,7 +318,8 @@ reaching the internet.
 | `tests/test_derive_caps.py` | 6 | Cap derivation: mid-rank percentile with ties, inclusive quantile, both link rules replayed without writing, and the constants in `scoring.py` equal to the derivation on `radar.db`. |
 | `tests/test_llm_chain.py` | 8 | Provider chain Groq → SambaNova → Ollama: order, fall-through, last error raised, one named provider alone, no Cerebras left. |
 | `tests/test_rtw_bonus.py` | 7 | Customer-reference bonus: documented defaults, per-reference and cap, configurable value reaching the stored score, and the sensitivity counts. |
-| `tests/test_dag_innovation_radar.py` | 7 | Airflow DAG structure: the task ids, the dependency chain between them, and every task callable moving to the repo root before it runs. The `pytest` job runs it against a minimal stub Airflow, since Airflow is not in `requirements.txt`; the `airflow-dag` job in `.github/workflows/tests.yml` runs the same file against the real Airflow 2.10. |
+| `tests/test_db_path.py` | 3 | `DB_PATH` and the ingest cooldown file resolve to the repo from another working directory, and opening the database from there creates no stray empty `radar.db`. |
+| `tests/test_dag_innovation_radar.py` | 8 | Airflow DAG structure: the task ids, the dependency chain between them, every task callable moving to the repo root before it runs, and the summary written to an absolute path. The `pytest` job runs it against a minimal stub Airflow, since Airflow is not in `requirements.txt`; the `airflow-dag` job in `.github/workflows/tests.yml` runs the same file against the real Airflow 2.10. |
 
 Network calls are mocked (`feedparser.parse` is monkeypatched; LLM calls are
 monkeypatched at `scoring.get_llm_json`). CI (`.github/workflows/tests.yml`)

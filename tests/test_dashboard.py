@@ -273,3 +273,38 @@ class TestPageOpening:
         captions = " ".join(str(c.value) for c in ran_app.caption)
         # "proposed" terms already crossed the threshold and must not be counted.
         assert f"{below} term(s) on the watchlist, still below" in captions
+
+
+class TestPresalesKeepsSpacesWithoutAnOwningTeam:
+    """The Presales view is a copy taken before persona's NaN became
+    "Unassigned", so a space whose enrichment failed (persona NULL) fell out
+    of the "Owning team" filter on that role only, while the default
+    selection claimed every team was shown."""
+
+    def test_null_persona_space_is_counted_for_presales(self, tmp_path, monkeypatch):
+        import shutil
+        import sqlite3
+
+        import streamlit as st
+
+        db = tmp_path / "radar.db"
+        shutil.copy(os.path.join(_REPO_ROOT, "radar.db"), db)
+        conn = sqlite3.connect(db)
+        presales_ids = [r[0] for r in conn.execute(
+            "SELECT os.id FROM opportunity_spaces os JOIN right_to_win_scores r"
+            " ON r.opportunity_space_id = os.id JOIN scores s ON s.opportunity_space_id = os.id"
+            " WHERE r.portfolio_distance IN ('L0', 'L1', 'L2')"
+        )]
+        conn.execute("UPDATE opportunity_spaces SET persona = NULL WHERE id = ?", (presales_ids[0],))
+        conn.commit()
+        conn.close()
+
+        monkeypatch.setattr(pipeline_db, "DB_PATH", str(db))
+        st.cache_data.clear()
+        app = AppTest.from_file(_APP_PATH, default_timeout=120)
+        app.run()
+        app.sidebar.radio[0].set_value("Presales / Proposal").run()
+        st.cache_data.clear()
+        assert not app.exception
+        counts = " ".join(str(m.value) for m in app.sidebar.markdown)
+        assert f"**{len(presales_ids)} of " in counts, counts

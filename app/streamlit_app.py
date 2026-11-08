@@ -114,6 +114,7 @@ def load_scores():
     conn.close()
     df["domain"] = df["domain"].fillna("Unassigned")
     df["horizon"] = df["horizon"].fillna("Later")
+    df["persona"] = df["persona"].fillna("Unassigned")
     df["buyer_persona"] = df["buyer_persona"].fillna("Unassigned")
     df["geography"] = df["geography"].fillna("Unassigned")
     return (df, signals_by_os, total_os_count)
@@ -263,7 +264,6 @@ else:
     df_role = df
 verticals = sorted(df["vertical"].dropna().unique())
 domains = sorted(df["domain"].dropna().unique())
-df["persona"] = df["persona"].fillna("Unassigned")
 personas_available = sorted(df["persona"].dropna().unique())
 buyer_personas_available = sorted(df["buyer_persona"].dropna().unique())
 geographies_available = sorted(

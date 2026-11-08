@@ -30,7 +30,11 @@ def _load_taxonomy_extensions():
 
 _EXT_USE_CASES, _EXT_TECHNOLOGIES = _load_taxonomy_extensions()
 load_dotenv()
-DB_PATH = "radar.db"
+# Absolute, anchored on the repo root: a relative "radar.db" resolved against
+# the caller's working directory, so an Airflow worker or a script started
+# elsewhere silently created and scored an empty database. The scripts in
+# scripts/ anchor the same file the same way.
+DB_PATH = os.path.join(BASE_DIR, "radar.db")
 NEWSAPI_AI_KEY = os.environ.get("NEWSAPI_AI_KEY", "")
 SEMANTIC_SCHOLAR_API_KEY = os.environ.get("SEMANTIC_SCHOLAR_API_KEY", "")
 ROLES = ["Strategist", "Sales", "Presales"]

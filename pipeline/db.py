@@ -426,8 +426,29 @@ def update_opportunity_space_enrichment(
     next_action_sales=None,
     next_action_presales=None,
 ):
+    """Store the LLM enrichment of one opportunity space.
+
+    A None field never erases a stored value. When no provider answered,
+    llm_enrich() returns "review manually" next actions (carrying
+    FALLBACK_MARKER) and horizon "Later": that whole answer only fills the
+    empty fields, so a rescue or --force run with the LLM down cannot replace
+    real next actions or move a space to the "Later" ring, the same rule
+    insert_score() applies to scores.
+    """
+    fallback = any(
+        _is_fallback(v)
+        for v in (next_action_strategist, next_action_sales, next_action_presales)
+    )
+    columns = (
+        "persona", "buyer_persona", "geography", "horizon", "domain", "next_action",
+        "next_action_strategist", "next_action_sales", "next_action_presales",
+    )
+    assignments = ", ".join(
+        f"{c} = COALESCE({c}, ?)" if fallback else f"{c} = COALESCE(?, {c})"
+        for c in columns
+    )
     conn.execute(
-        "UPDATE opportunity_spaces\n           SET persona = COALESCE(?, persona),\n               buyer_persona = COALESCE(?, buyer_persona),\n               geography = COALESCE(?, geography),\n               horizon = COALESCE(?, horizon),\n               domain = COALESCE(?, domain),\n               next_action = COALESCE(?, next_action),\n               next_action_strategist = COALESCE(?, next_action_strategist),\n               next_action_sales = COALESCE(?, next_action_sales),\n               next_action_presales = COALESCE(?, next_action_presales)\n           WHERE id = ?",
+        f"UPDATE opportunity_spaces SET {assignments} WHERE id = ?",
         (
             role,
             buyer_persona,
