@@ -3,9 +3,11 @@
 .env
 .env.*
 !.env.example
-.venv/
+.venv*/
 venv/
 orange.venv/
+.kilo/
+.vscode/
 **/__pycache__/
 **/*.pyc
 .pytest_cache/
