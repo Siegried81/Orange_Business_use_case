@@ -748,7 +748,7 @@ with tab_signals:
             )
             dated = dated.dropna(subset=["parsed_date"])
         if not dated.empty:
-            dated["month"] = dated["parsed_date"].dt.to_period("M").astype(str)
+            dated["month"] = dated["parsed_date"].dt.strftime("%Y-%m")
             monthly_counts = dated.groupby("month").size().rename("Signals")
             st.line_chart(monthly_counts, color="#ff7900")
         else:
