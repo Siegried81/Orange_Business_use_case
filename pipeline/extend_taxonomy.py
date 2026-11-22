@@ -1,12 +1,8 @@
 from datetime import datetime
 import json
-import os
 from pipeline.taxonomy_validation import is_generic_taxonomy_term
-from pipeline.config import TAXONOMY_PROPOSAL_THRESHOLD
+from pipeline.config import TAXONOMY_EXTENSIONS_PATH, TAXONOMY_PROPOSAL_THRESHOLD
 from pipeline.db import get_connection
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TAXONOMY_EXTENSIONS_PATH = os.path.join(BASE_DIR, "taxonomy_extensions.json")
 
 
 def _add_to_extensions(term, category):
@@ -145,22 +141,6 @@ def get_proposals(conn, status=None):
         query = "SELECT * FROM proposals ORDER BY frequency DESC"
         params = ()
     return conn.execute(query, params).fetchall()
-
-
-def print_proposals(conn):
-    pending = get_proposals(conn, "pending")
-    approved = get_proposals(conn, "approved")
-    rejected = get_proposals(conn, "rejected")
-    print(f"{'=' * 20} Proposals Summary {'=' * 20}")
-    print(f"   Pending: {len(pending)}")
-    print(f"   Approved: {len(approved)}")
-    print(f"   Rejected: {len(rejected)}")
-    if pending:
-        print("\nPending Proposals:")
-        for p in pending:
-            print(
-                f"   {p['vertical']} × {p['proposed_use_case']} × {p['proposed_technology']} (freq: {p['frequency']})"
-            )
 
 
 def run_review(conn):

@@ -1,5 +1,6 @@
 import math
 import re
+import statistics
 import sys
 import unicodedata
 from datetime import datetime, timezone
@@ -28,8 +29,10 @@ from pipeline.config import (
     GEOS_PROMPT,
     HORIZONS,
     DOMAINS_TAXONOMY,
+    PORTFOLIO_DISTANCE,
     TRUST_CRITICAL_VERTICALS,
     map_to_value_proposition,
+    normalize_geography,
     TED_LOOKBACK_DAYS,
 )
 from llm.llm_client import get_llm_json
@@ -84,9 +87,9 @@ ENRICHMENT_SAMPLE_SIZE = 10
 # insert_right_to_win_score() refuse to let a row carrying it overwrite a real
 # score, and get_opportunity_spaces_with_fallback_scores() finds those rows to
 # rescue them.
-# The only portfolio-distance levels the right-to-win prompt may answer with.
-PORTFOLIO_DISTANCE_LEVELS = ("L0", "L1", "L2", "L3", "L4")
 NEUTRAL_SCORE = 5.0
+# The only portfolio-distance levels the right-to-win prompt may answer with.
+PORTFOLIO_DISTANCE_LEVELS = tuple(PORTFOLIO_DISTANCE)
 
 
 def _coerce_llm_score(raw, neutral=NEUTRAL_SCORE, field="score"):
@@ -179,7 +182,6 @@ def novelty_momentum(signals) -> float:
     return round(recent_share * 10, 2)
 
 
-URGENT_SIGNAL_TYPES = {"regulation", "buying_signal"}
 URGENCY_PERCENTILE = 95
 URGENCY_MIN_SCALING_POINT = 1.0
 URGENCY_CAP = 6.0
@@ -204,8 +206,6 @@ def _urgency_weighted(signals) -> float:
 
 
 def compute_urgency_scaling_point(conn, opportunity_space_ids=None) -> float:
-    import statistics
-
     if opportunity_space_ids is None:
         rows = get_latest_scores(conn)
         ids = [r["id"] for r in rows]
@@ -284,6 +284,15 @@ def _fence_safe(text):
     return _SIGNALS_TAG.sub("[signals]", text)
 
 
+def _justification(result, note):
+    """The model's justification as text, plus the coercion note.
+
+    `"justification": null` is a valid JSON answer; adding the note to None
+    raised and ended the whole scoring run.
+    """
+    return str(result.get("justification") or "") + note
+
+
 def llm_evidence_quality(signals) -> tuple:
     if not signals:
         return (0.0, "No signals collected yet for this vertical.")
@@ -298,7 +307,7 @@ def llm_evidence_quality(signals) -> tuple:
     if not result or "score" not in result:
         return (5.0, "LLM scoring unavailable -- neutral default used.")
     score, note = _coerce_llm_score(result["score"], field="evidence_quality score")
-    return (score, result.get("justification", "") + note)
+    return (score, _justification(result, note))
 
 
 def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
@@ -312,7 +321,7 @@ def llm_strategic_relevance(vertical, use_case, technology, signals) -> tuple:
     if not result or "score" not in result:
         return (5.0, "LLM scoring unavailable -- neutral default used.")
     score, note = _coerce_llm_score(result["score"], field="strategic_relevance score")
-    justification = result.get("justification", "") + note
+    justification = _justification(result, note)
     value_prop = map_to_value_proposition(f"{vertical} {use_case} {technology}")
     if value_prop:
         justification += f" Maps to Orange's '{value_prop.value}' value proposition."
@@ -367,7 +376,7 @@ def llm_right_to_win(vertical, use_case, technology):
     score, note = _coerce_llm_score(
         result.get("right_to_win_score", 0), field="right_to_win_score"
     )
-    justification = result.get("justification", "") + note
+    justification = _justification(result, note)
     # The level drives the Presales filter and the quadrant message, so an
     # invented level ("L5", "Direct offer") must not reach the database. L4 is
     # the conservative end of the scale: it claims no portfolio fit.
@@ -378,7 +387,10 @@ def llm_right_to_win(vertical, use_case, technology):
             f"{FALLBACK_MARKER}, defaulted to L4, re-run scoring]"
         )
         distance = "L4"
-    assets = ", ".join(result.get("matched_assets", []))
+    matched = result.get("matched_assets")
+    if isinstance(matched, str):
+        matched = [matched]
+    assets = ", ".join(str(a) for a in matched or [])
     reference_bonus = customer_reference_bonus(vertical)
     if reference_bonus:
         score = min(10.0, score + reference_bonus)
@@ -419,21 +431,45 @@ def llm_enrich(vertical, use_case, technology, signals):
             "next_action_sales": fallback_action,
             "next_action_presales": fallback_action,
         }
-    geography = result.get("geography", [])
+    # Every closed list the prompt offers is checked, not only the domain: a
+    # horizon outside HORIZONS would be hidden by the dashboard's own filter.
+    # An answer off its list is stored as None, which never erases a value.
+    role = result.get("role")
+    buyer_persona = result.get("buyer_persona")
+    horizon = result.get("horizon", "Later")
     domain = result.get("domain")
-    if domain not in domain_names:
-        domain = None
     return {
-        "role": result.get("role"),
-        "buyer_persona": result.get("buyer_persona"),
-        "geography": ", ".join(geography) if isinstance(geography, list) else geography,
-        "horizon": result.get("horizon", "Later"),
-        "domain": domain,
+        "role": role if role in ROLES else None,
+        "buyer_persona": buyer_persona if buyer_persona in BUYER_PERSONAS else None,
+        "geography": normalize_geography(result.get("geography")),
+        "horizon": horizon if horizon in HORIZONS else None,
+        "domain": domain if domain in domain_names else None,
         "next_action_strategist": result.get("next_action_strategist", fallback_action),
         "next_action_sales": result.get("next_action_sales", fallback_action),
         "next_action_presales": result.get("next_action_presales", fallback_action),
         "next_action": result.get("next_action", ""),
     }
+
+
+def _enrich_and_store(conn, space):
+    """Enrich one opportunity space with the LLM, store the answer, return it."""
+    signals = get_linked_signals_for_opportunity_space(conn, space["id"])
+    enrichment = llm_enrich(
+        space["vertical"], space["use_case"], space["technology"], signals
+    )
+    update_opportunity_space_enrichment(
+        conn,
+        space["id"],
+        role=enrichment["role"],
+        buyer_persona=enrichment["buyer_persona"],
+        geography=enrichment["geography"],
+        horizon=enrichment["horizon"],
+        domain=enrichment["domain"],
+        next_action_strategist=enrichment["next_action_strategist"],
+        next_action_sales=enrichment["next_action_sales"],
+        next_action_presales=enrichment["next_action_presales"],
+    )
+    return enrichment
 
 
 def score_opportunity_space(
@@ -561,23 +597,7 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
         if space["domain"] and (not force):
             print("  Enrichment: skipped (already enriched -- use --force to redo)")
         else:
-            vertical = space["vertical"]
-            signals = get_linked_signals_for_opportunity_space(conn, space["id"])
-            enrichment = llm_enrich(
-                vertical, space["use_case"], space["technology"], signals
-            )
-            update_opportunity_space_enrichment(
-                conn,
-                space["id"],
-                role=enrichment["role"],
-                buyer_persona=enrichment["buyer_persona"],
-                geography=enrichment["geography"],
-                horizon=enrichment["horizon"],
-                domain=enrichment["domain"],
-                next_action_strategist=enrichment["next_action_strategist"],
-                next_action_sales=enrichment["next_action_sales"],
-                next_action_presales=enrichment["next_action_presales"],
-            )
+            enrichment = _enrich_and_store(conn, space)
             print(
                 f"  Enrichment: role={enrichment['role']}  buyer_persona={enrichment['buyer_persona']}  geography={enrichment['geography']}  horizon={enrichment['horizon']}  domain={enrichment['domain']}"
             )
@@ -602,23 +622,7 @@ def score_all_opportunity_spaces(force=False, from_label=None, to_label=None):
                 f"NOT REPAIRED {space['label']}: the LLM was unavailable, so the previous real score was kept."
             )
         if not space["domain"]:
-            vertical = space["vertical"]
-            signals = get_linked_signals_for_opportunity_space(conn, space["id"])
-            enrichment = llm_enrich(
-                vertical, space["use_case"], space["technology"], signals
-            )
-            update_opportunity_space_enrichment(
-                conn,
-                space["id"],
-                role=enrichment["role"],
-                buyer_persona=enrichment["buyer_persona"],
-                geography=enrichment["geography"],
-                horizon=enrichment["horizon"],
-                domain=enrichment["domain"],
-                next_action_strategist=enrichment["next_action_strategist"],
-                next_action_sales=enrichment["next_action_sales"],
-                next_action_presales=enrichment["next_action_presales"],
-            )
+            _enrich_and_store(conn, space)
         print()
     recalibrate_urgency(conn)
     stale_ids = {s["id"] for s in get_opportunity_spaces_with_old_scores(conn)}
@@ -783,22 +787,7 @@ def recalibrate_geography(conn=None):
         f"Re-enriching geography (new taxonomy, see config.GEOS_PROMPT) for {len(spaces)} already-scored opportunity space(s) -- attractiveness/right-to-win untouched.\n"
     )
     for space in spaces:
-        signals = get_linked_signals_for_opportunity_space(conn, space["id"])
-        enrichment = llm_enrich(
-            space["vertical"], space["use_case"], space["technology"], signals
-        )
-        update_opportunity_space_enrichment(
-            conn,
-            space["id"],
-            role=enrichment["role"],
-            buyer_persona=enrichment["buyer_persona"],
-            geography=enrichment["geography"],
-            horizon=enrichment["horizon"],
-            domain=enrichment["domain"],
-            next_action_strategist=enrichment["next_action_strategist"],
-            next_action_sales=enrichment["next_action_sales"],
-            next_action_presales=enrichment["next_action_presales"],
-        )
+        enrichment = _enrich_and_store(conn, space)
         print(
             f"{space['label']} ({space['vertical']} x {space['use_case']} x {space['technology']}) -> geography={enrichment['geography']}"
         )
@@ -873,23 +862,7 @@ def rescue_fallback_scores(conn=None):
         )
         print(f"  Right-to-win:   {rtw_score}/10  [{distance}]")
         print(f"  -> {rtw_justification}\n")
-        vertical = space["vertical"]
-        signals = get_linked_signals_for_opportunity_space(conn, space["id"])
-        enrichment = llm_enrich(
-            vertical, space["use_case"], space["technology"], signals
-        )
-        update_opportunity_space_enrichment(
-            conn,
-            space["id"],
-            role=enrichment["role"],
-            buyer_persona=enrichment["buyer_persona"],
-            geography=enrichment["geography"],
-            horizon=enrichment["horizon"],
-            domain=enrichment["domain"],
-            next_action_strategist=enrichment["next_action_strategist"],
-            next_action_sales=enrichment["next_action_sales"],
-            next_action_presales=enrichment["next_action_presales"],
-        )
+        _enrich_and_store(conn, space)
     if close_after:
         conn.close()
 

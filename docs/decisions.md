@@ -541,3 +541,69 @@ produced by the previous prompt until the next `radar_cli.py` scoring run.
 - **Revisit if:** the pipeline needs to run against another database file;
   then add one override read by `pipeline.config` and by every script.
 
+## 2026-11-20: Audit, geography reduced to regions and settings that nothing read
+
+- **Geography:** the enrichment prompt lists each region with its countries in
+  parentheses, and the model returned the whole label. The dashboard split the
+  stored text on commas, so its Geography filter offered fragments such as
+  "Ireland)" and "DACH (Switzerland". 46 of the 133 spaces had one.
+  `config.normalize_geography()` keeps only region names from `GEOS` (a country
+  maps to its region, anything else is dropped). It runs when the enrichment is
+  written and when the dashboard loads the table, so `radar.db` itself was not
+  rewritten. **Changes what is shown:** the filter now lists the 11 regions that
+  occur, instead of 26 entries.
+- **Closed lists:** role, buyer persona and horizon are checked against their
+  lists like the domain already was, and stored as `None` when off them. A
+  horizon outside `HORIZONS` would have been hidden by the dashboard's own
+  horizon filter. The committed `radar.db` holds no such value, so nothing moves.
+- **Watchlist count:** the dashboard counted `pending` terms as "below the
+  proposal threshold", but `analyze` marks a term `proposed` from its second
+  sighting while a proposal needs 5. It now counts the terms seen fewer than
+  `TAXONOMY_PROPOSAL_THRESHOLD` times whatever their status. **Changes the
+  number:** 180 -> 227 on the committed database.
+- **Ingest pacing:** `ARXIV_SLEEP_SECONDS` (3) and `GOOGLE_NEWS_SLEEP_SECONDS`
+  (1) were declared and never read. `run_full_refresh()` now sleeps with them
+  after each arXiv and each Google News request (the news, competitor, EUR-Lex
+  and TED-fallback passes), about two minutes more over a full ingest.
+- **Fixed without a number moving:** `dedupe --apply` deleted a signal before
+  its link, which foreign keys refuse; `pipeline/latest_scores.py` imported a
+  function that never existed and now calls `radar_cli.cmd_scores`;
+  `get_llm_json` returns `None` for a null reply or a JSON value that is not an
+  object; a null `justification` or a string or null `matched_assets` no longer
+  stops a scoring run; null `themes` no longer stops theme extraction.
+- **Removed as dead:** `URGENT_SIGNAL_TYPES`, `analyze.dump_titles`,
+  `extend_taxonomy.print_proposals`, `db.get_latest_opportunity_spaces`,
+  `db.get_scores_ranked_by_persona_vertical`. The four enrichment blocks in
+  `scoring.py` became one `_enrich_and_store()`, and
+  `PORTFOLIO_DISTANCE_LEVELS` is read from `config.PORTFOLIO_DISTANCE`.
+- **Left for the team:** `SIGNAL_TYPES` and `PARTNER_TIERS` in `config.py` are
+  read nowhere (wiring `PARTNER_TIERS` into the prompts would move scores);
+  `pipeline/signals_discovery.py` duplicates `theme_promotion.py` for the
+  older CLI kept on purpose.
+- **Tests:** 235 passed before, 273 after (38 new tests, 18 files).
+- **Revisit if:** a stored geography has to be rewritten (a one-line update per
+  row through `normalize_geography`), or the pacing makes the DAG too slow.
+
+## 2026-11-22: Duplicates deleted, geography cleaned in the Power BI export, partner tiers left out
+
+- **Deleted:** `radar_cli_top_15.py`, `pipeline/signals_discovery.py` and
+  `pipeline/latest_scores.py`, with the test of the last one. This replaces the
+  "kept on purpose" line of 2026-09-29 and the entries that kept the top-15
+  summary tied to the old CLI: `radar_cli.py summary --top 15 --output
+  opportunity_spaces_summary_top_15.md` writes the same file (same header,
+  "133/133 opportunity spaces scored, top 15 by attractiveness shown"), and
+  `radar_cli.py scores` replaces `latest_scores.py`. The committed
+  `opportunity_spaces_summary_top_15.md` stays, as a deliverable. Nothing
+  imported the three files.
+- **Geography in the Power BI export:** `scripts/export_powerbi.py` now passes
+  `geography` through `normalize_geography`, like the dashboard, so Power BI no
+  longer gets "Ireland)" style fragments. `radar.db` is not rewritten. No model
+  visual uses the column today. **Changes what is exported:** `geography` in
+  `opportunity_spaces.csv`, 46 of 133 rows.
+- **Partner tiers:** `config.PARTNER_TIERS` stays unread. Putting it in the
+  right-to-win prompt would tell the model which partners Orange has when it
+  chooses L2, but needs a full LLM rescore of right-to-win, and scores, levels
+  and quadrants would move. Listed in the README limitations and the deep dive.
+- **SIGNAL_TYPES:** kept, as the declared list of signal types. A test now checks
+  that the fetchers' defaults and the types stored in `radar.db` are all in it.
+- **Tests:** 273 passed before, 276 after (17 files).

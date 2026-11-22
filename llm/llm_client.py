@@ -20,9 +20,8 @@ safety net. LLM_PROVIDER can also name one provider ("groq", "sambanova",
                        to have "auto" actually reach this step (free tier
                        key: https://cloud.sambanova.ai)
     SAMBANOVA_MODEL   default: DeepSeek-V3.1 -- check cloud.sambanova.ai for
-                       the current model list (25/8: the original default
-                       here, Meta-Llama-3.1-8B-Instruct, already came back
-                       410 Gone the same day -- this catalog moves fast)
+                       the current model list; the catalog moves fast and a
+                       retired model answers 410 Gone
     OLLAMA_URL        default: http://localhost:11434/api/generate
     OLLAMA_MODEL      default: llama3.2:3b
 
@@ -44,7 +43,7 @@ from dotenv import load_dotenv
 load_dotenv()  # reads .env in the repo root and sets os.environ -- run this once at import time
 
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "auto").lower()  # "auto" | "groq" | "sambanova" | "ollama"
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")  # llama-3.3-70b-versatile was deprecated by Groq (Aug 2026)
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")  # Groq retired the previous default, llama-3.3-70b-versatile
 SAMBANOVA_MODEL = os.environ.get("SAMBANOVA_MODEL", "DeepSeek-V3.1")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
@@ -206,23 +205,27 @@ def get_llm_json(prompt, system_prompt=None):
     Use this whenever you need a structured {"score": ..., "justification": ...}
     output -- e.g. for scoring/scoring.py's evidence_quality and
     strategic_relevance functions.
-    Returns None if parsing fails (caller should handle that case).
+    Returns None if parsing fails or the answer is not a JSON object: every
+    caller looks keys up in it, and a list or a number would raise there.
     """
     try:
         raw = get_llm_response(prompt, system_prompt)
     except Exception as e:
         print(f"[llm_client] No LLM reachable ({e}) -- check GROQ_API_KEY or Ollama")
         return None
-    cleaned = raw.strip()
+    cleaned = (raw or "").strip()  # a provider can answer with content None
     if cleaned.startswith("```"):
         cleaned = cleaned.split("```")[1]
         if cleaned.startswith("json"):
             cleaned = cleaned[4:]
     try:
-        return json.loads(cleaned.strip())
+        parsed = json.loads(cleaned.strip())
     except json.JSONDecodeError:
-        print(f"[llm_client] Could not parse JSON from response: {raw[:200]}")
+        parsed = None
+    if not isinstance(parsed, dict):
+        print(f"[llm_client] Could not parse a JSON object from response: {(raw or '')[:200]}")
         return None
+    return parsed
 
 
 if __name__ == "__main__":
