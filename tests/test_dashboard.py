@@ -23,7 +23,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _APP_PATH = os.path.join(_REPO_ROOT, "app", "streamlit_app.py")
 
 pytest.importorskip("streamlit.testing.v1")
-from streamlit.testing.v1 import AppTest
+from streamlit.testing.v1 import AppTest  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -120,7 +120,9 @@ class TestOpportunityTypeFilter:
         assert kept["label"].tolist() == ["OS001", "OS002", "OS003", "OS004"]
 
     def test_each_type_keeps_only_its_levels(self, dashboard):
-        pick = lambda t: dashboard.filter_by_opportunity_type(self.FRAME, t)["label"].tolist()
+        def pick(t):
+            return dashboard.filter_by_opportunity_type(self.FRAME, t)["label"].tolist()
+
         assert pick("Quick wins (L0–L1)") == ["OS001"]
         assert pick("Partner-dependent (L2)") == ["OS002"]
         assert pick("Bigger bets (L3–L4)") == ["OS003"]

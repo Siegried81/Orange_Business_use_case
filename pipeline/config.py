@@ -18,7 +18,7 @@ _init_taxonomy_extensions()
 
 def _load_taxonomy_extensions():
     if os.path.exists(TAXONOMY_EXTENSIONS_PATH):
-        with open(TAXONOMY_EXTENSIONS_PATH, "r") as f:
+        with open(TAXONOMY_EXTENSIONS_PATH) as f:
             data = json.load(f)
         use_cases = [item["term"] for item in data if item["category"] == "use_case"]
         technologies = [
@@ -191,7 +191,7 @@ _GDELT_SAFE_SUBSTITUTIONS = {"AI": "artificial intelligence", "EU": "European Un
 
 def _gdelt_safe_query(seed):
     words = seed.split()
-    return " ".join((_GDELT_SAFE_SUBSTITUTIONS.get(w, w) for w in words))
+    return " ".join(_GDELT_SAFE_SUBSTITUTIONS.get(w, w) for w in words)
 
 
 GDELT_QUERIES = [
@@ -505,7 +505,7 @@ VALUE_PROP_KEYWORDS = {
 def map_to_value_proposition(os_text):
     text = os_text.lower()
     for vp, keywords in VALUE_PROP_KEYWORDS.items():
-        if any((kw in text for kw in keywords)):
+        if any(kw in text for kw in keywords):
             return vp
     return None
 

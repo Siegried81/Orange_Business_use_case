@@ -10,7 +10,23 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same ref makes the older run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+
   pytest:
     runs-on: ubuntu-latest
     steps:
@@ -19,8 +35,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements.txt
-      - run: python -m pytest -q
+      - run: pip install -r requirements-dev.txt
+      # Coverage is reported on every run; the floor sits just under the current
+      # level so it catches a collapse without blocking on a point or two.
+      - run: python -m pytest -q --cov=pipeline --cov=llm --cov=radar_cli --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=60
 
   # The job above runs the DAG tests against a stub Airflow (the real one is
   # not in requirements.txt). This one runs them against Airflow 2.10 itself,
@@ -38,7 +56,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements-airflow.txt --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.12.txt"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-dev.txt
       - run: python -m pytest tests/test_dag_innovation_radar.py -q
 
   docker:
@@ -46,14 +64,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build -t innovation-radar .
+      - run: docker build --target test -t innovation-radar-test .
       # The image must open the committed database, which is the first thing
       # a cold start on Render does.
       - run: docker run --rm innovation-radar python -c "import sys; sys.path.insert(0, '.'); from pipeline.db import get_connection; get_connection().close(); print('ok')"
       # The pytest job runs on 3.12, but the image ships its own Python
       # (python:X-slim in the Dockerfile), and Dependabot bumps that base on its
-      # own. Running the suite inside the image checks the interpreter that
-      # actually serves the dashboard; test_dashboard.py renders the page with
+      # own. Running the suite inside the `test` stage (the production image
+      # plus pytest, which the production image does not carry) checks the
+      # interpreter that actually serves the dashboard; test_dashboard.py renders the page with
       # AppTest, so an import or rendering break under the new Python fails
       # here. tests/ is kept out of the image by .dockerignore, hence the
       # read-only mount; no cache provider because the mount is not writable.
-      - run: docker run --rm -v "$PWD:/src:ro" -w /src innovation-radar python -m pytest -q -p no:cacheprovider
+      - run: docker run --rm -v "$PWD:/src:ro" -w /src innovation-radar-test python -m pytest -q -p no:cacheprovider

@@ -63,7 +63,7 @@ THEME_EXTRACTION_SYSTEM_PROMPT = 'You are analyzing market signals (news, resear
 
 
 def _call_theme_extraction_llm(vertical, rows):
-    titles = "\n".join((f"- [{r['signal_type']}] {r['title']}" for r in rows))
+    titles = "\n".join(f"- [{r['signal_type']}] {r['title']}" for r in rows)
     prompt = f"Vertical: {vertical}\n\nSignals:\n{titles}"
     system_prompt = THEME_EXTRACTION_SYSTEM_PROMPT.format(
         use_cases=", ".join(USE_CASES_TAXONOMY),

@@ -5,7 +5,7 @@ opportunity space. These tests pin the minimum, the pruning of links that no
 longer reach it, and the calibrate count that has to use the same minimum.
 """
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 import pytest
 
@@ -32,7 +32,7 @@ def _space(conn, use_case="Cloud Infrastructure Modernization", technology="Clou
     cur = conn.execute(
         "INSERT INTO opportunity_spaces (label, run_id, vertical, use_case, technology, created_at) "
         "VALUES ('OS001', 'test-run', 'Aerospace & Defense', ?, ?, ?)",
-        (use_case, technology, datetime.now(timezone.utc).isoformat()),
+        (use_case, technology, datetime.now(UTC).isoformat()),
     )
     conn.commit()
     return cur.lastrowid
@@ -96,7 +96,7 @@ def test_pruning_only_touches_the_os_the_link_is_weak_for(db_conn):
     other_os = db_conn.execute(
         "INSERT INTO opportunity_spaces (label, run_id, vertical, use_case, technology, created_at) "
         "VALUES ('OS002', 'test-run', 'Aerospace & Defense', 'Natasha Speaks', 'Game Analytics', ?)",
-        (datetime.now(timezone.utc).isoformat(),),
+        (datetime.now(UTC).isoformat(),),
     ).lastrowid
     db_conn.commit()
     sid = _signal(db_conn, "Natasha Cloud speaks out after the game", source="Idaho Statesman")

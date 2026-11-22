@@ -50,7 +50,7 @@ COOLDOWN_FILE = os.path.join(LOGS_DIR, ".source_cooldowns.json")
 
 def _load_cooldowns():
     try:
-        with open(COOLDOWN_FILE, "r", encoding="utf-8") as f:
+        with open(COOLDOWN_FILE, encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
@@ -271,7 +271,7 @@ def fetch_hacker_news(
 
 def fetch_arxiv(conn, vertical, query, signal_type="proof_signal", max_results=10):
     terms = query.split()
-    search_query = " OR ".join((f"all:{t}" for t in terms))
+    search_query = " OR ".join(f"all:{t}" for t in terms)
     params = {
         "search_query": search_query,
         "sortBy": "submittedDate",
@@ -630,4 +630,4 @@ def run_full_refresh():
 
 
 if __name__ == "__main__":
-    run_full_refresh()  
+    run_full_refresh()

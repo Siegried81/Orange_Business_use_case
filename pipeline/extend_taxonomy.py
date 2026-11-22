@@ -10,10 +10,10 @@ TAXONOMY_EXTENSIONS_PATH = os.path.join(BASE_DIR, "taxonomy_extensions.json")
 
 
 def _add_to_extensions(term, category):
-    with open(TAXONOMY_EXTENSIONS_PATH, "r") as f:
+    with open(TAXONOMY_EXTENSIONS_PATH) as f:
         data = json.load(f)
     if not any(
-        (item["term"] == term and item["category"] == category for item in data)
+        item["term"] == term and item["category"] == category for item in data
     ):
         data.append({"term": term, "category": category})
     with open(TAXONOMY_EXTENSIONS_PATH, "w") as f:

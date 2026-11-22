@@ -16,7 +16,7 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -45,11 +45,11 @@ def to_iso(value):
             pass
     if dt is None:
         try:
-            dt = datetime.strptime(text, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+            dt = datetime.strptime(text, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
         except ValueError:
             return ""
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -217,7 +217,7 @@ def main():
     })
     write_csv("opportunity_assets", ["opportunity_space_id", "asset"], asset_rows)
 
-    write_csv("export_info", ["exported_at"], [[to_iso(datetime.now(timezone.utc).isoformat())]])
+    write_csv("export_info", ["exported_at"], [[to_iso(datetime.now(UTC).isoformat())]])
     conn.close()
     check_data_folder()
 

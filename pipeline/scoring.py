@@ -2,7 +2,7 @@ import math
 import re
 import sys
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from email.utils import parsedate_to_datetime
 from pipeline.db import (
     FALLBACK_MARKER,
@@ -148,13 +148,13 @@ def _parse_signal_date(signal):
         if dt is None:
             try:
                 dt = datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(
-                    tzinfo=timezone.utc
+                    tzinfo=UTC
                 )
             except ValueError:
                 pass
         if dt is not None:
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             return dt
     return None
 
@@ -169,12 +169,12 @@ def novelty_momentum(signals) -> float:
         return 5.0
     parsed_dates.sort()
     oldest = parsed_dates[0]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     span_seconds = (now - oldest).total_seconds()
     if span_seconds <= 0:
         return 5.0
     recent_third_start = now - (now - oldest) / 3
-    recent_count = sum((1 for d in parsed_dates if d >= recent_third_start))
+    recent_count = sum(1 for d in parsed_dates if d >= recent_third_start)
     recent_share = recent_count / len(parsed_dates)
     return round(recent_share * 10, 2)
 
@@ -196,7 +196,7 @@ def _urgency_weighted(signals) -> float:
             if dt is None:
                 weighted += 0.5
             else:
-                age_days = (datetime.now(timezone.utc) - dt).total_seconds() / 86400
+                age_days = (datetime.now(UTC) - dt).total_seconds() / 86400
                 weighted += max(0.0, 1 - age_days / TED_LOOKBACK_DAYS)
     if len(signals) >= 3:
         weighted += NOVELTY_URGENCY_WEIGHT * (novelty_momentum(signals) / 10.0)
@@ -240,7 +240,7 @@ ENRICHMENT_SYSTEM_PROMPT = 'You are enriching a B2B innovation opportunity space
 
 def _format_asset_catalog():
     return "\n".join(
-        (f"- {a['name']} ({a['category']})" for a in ORANGE_BUSINESS_ASSETS)
+        f"- {a['name']} ({a['category']})" for a in ORANGE_BUSINESS_ASSETS
     )
 
 
@@ -248,7 +248,7 @@ def _format_analyst_recognition():
     if not ANALYST_RECOGNITION:
         return ""
     lines = "\n".join(
-        (f"- {a['fact']} (source: {a['source']})" for a in ANALYST_RECOGNITION)
+        f"- {a['fact']} (source: {a['source']})" for a in ANALYST_RECOGNITION
     )
     return f"\nExternal validation (use to strengthen justifications where relevant):\n{lines}"
 
@@ -257,7 +257,7 @@ def _format_capability_stats():
     if not CAPABILITY_STATS:
         return ""
     lines = "\n".join(
-        (f"- {c['stat']} (source: {c['source']})" for c in CAPABILITY_STATS)
+        f"- {c['stat']} (source: {c['source']})" for c in CAPABILITY_STATS
     )
     return f"\nOrange Business scale/capability facts (cite only if directly relevant, e.g. delivery capacity or security posture):\n{lines}"
 
@@ -266,7 +266,7 @@ def _format_customer_references(vertical):
     matches = [c for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical]
     if not matches:
         return ""
-    lines = "\n".join((f"- {c['customer']} (source: {c['source']})" for c in matches))
+    lines = "\n".join(f"- {c['customer']} (source: {c['source']})" for c in matches)
     return f"\nVerified named customers of Orange Business in THIS vertical (cite if relevant -- an actual delivered customer is stronger evidence than a matching asset alone):\n{lines}"
 
 
@@ -288,10 +288,10 @@ def llm_evidence_quality(signals) -> tuple:
     if not signals:
         return (0.0, "No signals collected yet for this vertical.")
     titles = "\n".join(
-        (
+
             f"- [{_fence_safe(s['source_name'])}] {_fence_safe(s['title'])}"
             for s in signals[:EVIDENCE_QUALITY_MAX_SIGNALS]
-        )
+
     )
     prompt = f"Signals to evaluate:\n<signals>\n{titles}\n</signals>"
     result = get_llm_json(prompt, system_prompt=EVIDENCE_QUALITY_SYSTEM_PROMPT)
@@ -333,7 +333,7 @@ CUSTOMER_REFERENCE_BONUS_CAP = 1.0
 
 
 def customer_reference_count(vertical) -> int:
-    return sum((1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical))
+    return sum(1 for c in CUSTOMER_REFERENCES if c.get("vertical") == vertical)
 
 
 def customer_reference_bonus(vertical, per_reference=None, cap=None) -> float:
@@ -393,7 +393,7 @@ def llm_right_to_win(vertical, use_case, technology):
 
 def llm_enrich(vertical, use_case, technology, signals):
     sample_titles = "\n".join(
-        (f"- {s['title']}" for s in signals[:ENRICHMENT_SAMPLE_SIZE])
+        f"- {s['title']}" for s in signals[:ENRICHMENT_SAMPLE_SIZE]
     )
     prompt = f"Opportunity space: {vertical} x {use_case} x {technology}\nSample signals:\n{sample_titles}"
     domain_names = [d["name"] for d in DOMAINS_TAXONOMY]
@@ -464,7 +464,7 @@ def score_opportunity_space(
         "strategic_relevance": relevance_score,
     }
     urgency = urgency_score(signals, scaling_point=urgency_scaling_point)
-    total = sum((sub_scores[k] * WEIGHTS[k] for k in WEIGHTS))
+    total = sum(sub_scores[k] * WEIGHTS[k] for k in WEIGHTS)
     written = insert_score(
         conn,
         opportunity_space_row["id"],
@@ -668,7 +668,7 @@ def recalibrate_deterministic_scores(conn=None, rows=None):
             "evidence_quality": r["evidence_quality"],
             "strategic_relevance": r["strategic_relevance"],
         }
-        new_total = round(sum((sub_scores[k] * WEIGHTS[k] for k in WEIGHTS)), 2)
+        new_total = round(sum(sub_scores[k] * WEIGHTS[k] for k in WEIGHTS), 2)
         insert_score(
             conn,
             r["id"],
