@@ -74,6 +74,7 @@ GitHub Actions (`.github/workflows/tests.yml`) runs lint, the tests with coverag
 
 - **A snapshot**: the dashboard shows the last committed `radar.db`; it only moves when the pipeline is re-run and the database committed.
 - **LLM judgements**: evidence quality, strategic relevance, right-to-win and next actions come from a language model and vary between runs; treat them as a starting point, not a measurement.
+- **Partner tiers are not in the prompts**: `PARTNER_TIERS` in `pipeline/config.py` is read by no prompt, so the right-to-win model does not know which partners Orange has when it judges L2. Wiring it means a full LLM rescore of right-to-win, and scores and quadrants would move.
 - **Public data only**: right-to-win is judged against the public Orange Business portfolio, and weights and thresholds are not fitted to won/lost outcomes.
 
 ## Origin and credits

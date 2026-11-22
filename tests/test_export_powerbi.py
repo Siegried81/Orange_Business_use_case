@@ -197,3 +197,39 @@ class TestMainIsReadOnly:
                 "export_info",
             )
         )
+
+
+class TestGeographyIsExportedAsRegions:
+    """radar.db keeps "Benelux (Netherlands, Belgium, Luxembourg)" in some rows;
+    the export reduces it to region names so Power BI and the dashboard agree."""
+
+    def test_clean_space_reduces_the_label_to_regions(self):
+        row = {"geography": "Benelux (Netherlands, Belgium, Luxembourg), Germany (Germany), UK & Ireland"}
+        export_powerbi.clean_space(row)
+        assert row["geography"] == "Benelux, Germany, UK & Ireland"
+
+    def test_a_missing_geography_stays_an_empty_cell(self):
+        row = {"geography": None}
+        export_powerbi.clean_space(row)
+        assert row["geography"] == ""
+
+    def test_main_writes_clean_geography_and_leaves_the_database_alone(self, tmp_path, monkeypatch):
+        db = tmp_path / "radar.db"
+        conn = sqlite3.connect(db)
+        conn.executescript(SCHEMA)
+        migrate_schema(conn)
+        conn.execute(
+            "INSERT INTO opportunity_spaces (label, vertical, use_case, technology, created_at, geography)"
+            " VALUES ('OS001', 'Energy', 'u', 't', '2026-10-12', 'DACH (Switzerland, Austria), Ireland)')"
+        )
+        conn.commit()
+        conn.close()
+        out = tmp_path / "out"
+        monkeypatch.setattr(export_powerbi, "DB_PATH", str(db))
+        monkeypatch.setattr(export_powerbi, "OUT_DIR", str(out))
+        monkeypatch.setattr(export_powerbi, "check_data_folder", lambda: True)
+        export_powerbi.main()
+        rows = _read(out / "opportunity_spaces.csv")
+        assert rows[1][rows[0].index("geography")] == "DACH"
+        stored = sqlite3.connect(db).execute("SELECT geography FROM opportunity_spaces").fetchone()[0]
+        assert stored == "DACH (Switzerland, Austria), Ireland)"

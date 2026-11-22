@@ -8,6 +8,7 @@ import feedparser
 import requests
 from pipeline.config import (
     GOOGLE_NEWS_QUERIES,
+    GOOGLE_NEWS_SLEEP_SECONDS,
     GDELT_QUERIES,
     ENABLE_GDELT,
     GDELT_SLEEP_SECONDS,
@@ -17,6 +18,7 @@ from pipeline.config import (
     HN_QUERIES,
     COMPETITOR_QUERIES,
     ARXIV_QUERIES,
+    ARXIV_SLEEP_SECONDS,
     SEMANTIC_SCHOLAR_QUERIES,
     SEMANTIC_SCHOLAR_SLEEP_SECONDS,
     SEMANTIC_SCHOLAR_API_KEY,
@@ -482,6 +484,7 @@ def run_full_refresh():
                 q["vertical"],
                 q["query"],
             )
+            time.sleep(GOOGLE_NEWS_SLEEP_SECONDS)
         if ENABLE_NEWSAPI_AI:
             for q in NEWSAPI_AI_QUERIES:
                 safe_run(
@@ -550,10 +553,12 @@ def run_full_refresh():
                 q["query"],
                 signal_type="market_move",
             )
+            time.sleep(GOOGLE_NEWS_SLEEP_SECONDS)
         for q in ARXIV_QUERIES:
             safe_run(
                 f"arXiv / {q['vertical']}", fetch_arxiv, conn, q["vertical"], q["query"]
             )
+            time.sleep(ARXIV_SLEEP_SECONDS)
         for q in REGULATION_QUERIES:
             safe_run(
                 f"Regulation (EUR-Lex) / {q['vertical']}",
@@ -564,6 +569,7 @@ def run_full_refresh():
                 signal_type="regulation",
                 source_name=EURLEX_SOURCE_NAME,
             )
+            time.sleep(GOOGLE_NEWS_SLEEP_SECONDS)
         if ENABLE_TED:
             for q in TED_QUERIES:
                 safe_run(
@@ -588,6 +594,7 @@ def run_full_refresh():
                     signal_type="buying_signal",
                     source_name=TED_SOURCE_NAME,
                 )
+                time.sleep(GOOGLE_NEWS_SLEEP_SECONDS)
         remaining = _cooldown_remaining_minutes(
             "semantic_scholar", SEMANTIC_SCHOLAR_COOLDOWN_MINUTES
         )

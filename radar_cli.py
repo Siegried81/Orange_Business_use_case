@@ -292,10 +292,11 @@ def cmd_dedupe(conn, apply=False):
         total = 0
         for group in groups:
             for dup in group[1:]:
-                conn.execute("DELETE FROM signals WHERE id = ?", (dup["id"],))
+                # Links first: with foreign keys on, a linked signal cannot go.
                 conn.execute(
                     "DELETE FROM opportunity_signals WHERE signal_id = ?", (dup["id"],)
                 )
+                conn.execute("DELETE FROM signals WHERE id = ?", (dup["id"],))
                 total += 1
         conn.commit()
         print(f"Deleted {total} near-duplicate signals.")

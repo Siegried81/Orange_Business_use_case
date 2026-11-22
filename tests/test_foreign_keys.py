@@ -76,3 +76,23 @@ def test_the_committed_database_has_no_violation_left(tmp_path):
     conn = sqlite3.connect(copy)
     repair_foreign_key_targets(conn)
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_dedupe_removes_a_linked_duplicate_with_foreign_keys_on(tmp_path, monkeypatch):
+    """`dedupe --apply` deleted the signal before its link, so a duplicate that
+    was linked to an opportunity space raised "FOREIGN KEY constraint failed"."""
+    import radar_cli
+
+    monkeypatch.setattr(config, "DB_PATH", str(tmp_path / "radar.db"))
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "radar.db"))
+    db.init_db()
+    conn = db.get_connection()
+    os_id = db.upsert_opportunity_space(conn, "r", "OS001", "Retail", "Cloud Infrastructure Modernization", "Cloud")
+    db.insert_signal(conn, "A", "http://a/1", "market_move", "Bank moves to the cloud now", None, None, "Retail")
+    db.insert_signal(conn, "B", "http://b/1", "market_move", "Bank moves to the cloud now - Reuters", None, None, "Retail")
+    kept, duplicate = [r[0] for r in conn.execute("SELECT id FROM signals ORDER BY id")]
+    db.link_signal_to_opportunity(conn, os_id, duplicate)
+    radar_cli.cmd_dedupe(conn, apply=True)
+    assert [r[0] for r in conn.execute("SELECT id FROM signals")] == [kept]
+    assert conn.execute("SELECT COUNT(*) FROM opportunity_signals").fetchone()[0] == 0
+    assert conn.execute("PRAGMA foreign_key_check").fetchall() == []

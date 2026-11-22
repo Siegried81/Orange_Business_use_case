@@ -21,6 +21,8 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from pipeline.config import normalize_geography  # noqa: E402
 DB_PATH = os.path.join(ROOT, "radar.db")
 OUT_DIR = os.path.join(ROOT, "app", "powerbi_data")
 MODEL_PATH = os.path.join(
@@ -152,6 +154,17 @@ def clean_signal(row):
     row["summary"] = re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+def clean_space(row):
+    """Reduce `geography` to region names, as the dashboard does on load.
+
+    radar.db still holds values like "Benelux (Netherlands, Belgium,
+    Luxembourg)"; read raw, Power BI would show the country fragments. The
+    database itself is left as it is, so every reader goes through
+    normalize_geography. An empty result is exported as an empty cell.
+    """
+    row["geography"] = normalize_geography(row["geography"]) or ""
+
+
 def model_data_folder(model_path=MODEL_PATH):
     """Return the DataFolder path stored in the Power BI model, or None.
 
@@ -200,7 +213,7 @@ def main():
     conn = sqlite3.connect(Path(DB_PATH).as_uri() + "?mode=ro", uri=True)
     print(f"Exporting {DB_PATH} -> {OUT_DIR}")
 
-    export_query(conn, "opportunity_spaces", OPPORTUNITY_SPACES_SQL)
+    export_query(conn, "opportunity_spaces", OPPORTUNITY_SPACES_SQL, extra=clean_space)
     scores = export_query(conn, "latest_scores", LATEST_SCORES_SQL)
     export_query(
         conn, "signals", SIGNALS_SQL, extra=clean_signal, added_columns=("published_on",)

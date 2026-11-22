@@ -102,8 +102,8 @@ A missing score yields no quadrant. A space with no linked signal is put in a fi
 
 | Module | Owns |
 |---|---|
-| `pipeline/config.py` | Verticals and search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), source queries and rate-limit settings, the Orange Business catalog (assets, customer references, analyst facts, capability stats), roles, personas, `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
-| `pipeline/ingest.py` | One fetcher per source, `safe_run()` isolation, feeds downloaded with a timeout and an error on HTTP failure, disk-backed GDELT and Semantic Scholar cooldowns (`logs/.source_cooldowns.json`), timestamped run log. |
+| `pipeline/config.py` | Verticals and search seeds, the closed taxonomy (+ `taxonomy_extensions.json`), source queries and rate-limit settings, the Orange Business catalog (assets, customer references, analyst facts, capability stats), roles, personas, geographies (`normalize_geography()`), `STRONG_THRESHOLD`, `quadrant()`, `TAXONOMY_PROPOSAL_THRESHOLD`. |
+| `pipeline/ingest.py` | One fetcher per source, `safe_run()` isolation, feeds downloaded with a timeout and an error on HTTP failure, disk-backed GDELT and Semantic Scholar cooldowns (`logs/.source_cooldowns.json`), pauses after each Google News and arXiv request (`GOOGLE_NEWS_SLEEP_SECONDS`, `ARXIV_SLEEP_SECONDS`), timestamped run log. |
 | `pipeline/analyze.py` | Theme extraction: `_call_theme_extraction_llm()` (the only LLM boundary), `_classify_themes()` (pure, unit-tested); `--from=` resumes after a quota stop. |
 | `pipeline/theme_promotion.py` | Tracks valid themes across runs; feeds `promote`. |
 | `pipeline/extend_taxonomy.py` | Watchlist term to proposal once its frequency reaches `TAXONOMY_PROPOSAL_THRESHOLD`. |
@@ -125,7 +125,7 @@ A missing score yields no quadrant. A space with no linked signal is put in a fi
 Five kinds of call, each a single structured call with a fixed prompt returning one JSON object: theme extraction, evidence quality, strategic relevance, right-to-win, and enrichment (role, buyer persona, geographies, horizon, domain, one next action per role). No agent, no tool use, no loop. Everything countable (volume, diversity, momentum, urgency, linking) stays out of the LLM on purpose.
 
 - **Provider chain** (`LLM_PROVIDER=auto`): Groq (up to 5 keys, rotated on 429/quota errors), then SambaNova, then local Ollama. A provider with no key is skipped. Temperature 0 on Groq and SambaNova; the Ollama call sends none.
-- **Closed vocabularies**: the model must pick use cases and technologies from the taxonomy and domains from `DOMAINS_TAXONOMY`; anything else goes to the watchlist (themes) or becomes `None` (domain).
+- **Closed vocabularies**: the model must pick use cases and technologies from the taxonomy; anything else goes to the watchlist. Role, buyer persona, horizon and domain are checked against their lists and become `None` when off them (a `None` never erases a stored value). Geography is reduced to region names from `GEOS` by `normalize_geography()`, because the prompt lists countries in parentheses and the model used to return the whole label.
 - **Grounding**: strategic relevance and right-to-win prompts embed the real asset catalog and customer references.
 - **Fallbacks, never crashes**: a missing required key (`score`, `portfolio_distance`, `role`) makes the whole result fall back (neutral 5.0, L4/0, "review manually"); finite scores outside 0-10 are clamped. A fallback never overwrites a real score or real enrichment, and a scoring run with no answering provider exits non-zero. `--rescue-fallback` re-scores the spaces still on a fallback.
 - **Untrusted titles**: the evidence-quality prompt fences titles in a `<signals>` block declared to be data, and defangs any spelling of that tag inside a title.

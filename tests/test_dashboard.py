@@ -18,6 +18,7 @@ import pandas as pd
 import pytest
 
 import pipeline.db as pipeline_db
+from pipeline.config import TAXONOMY_PROPOSAL_THRESHOLD
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _APP_PATH = os.path.join(_REPO_ROOT, "app", "streamlit_app.py")
@@ -268,12 +269,16 @@ class TestPageOpening:
         conn = pipeline_db.get_connection()
         try:
             pending = len(conn.execute("SELECT 1 FROM proposals WHERE status = 'pending'").fetchall())
-            below = len(conn.execute("SELECT 1 FROM watchlist_terms WHERE status = 'pending'").fetchall())
+            below = len(conn.execute(
+                "SELECT 1 FROM watchlist_terms WHERE status IN ('pending', 'proposed') AND frequency < ?",
+                (TAXONOMY_PROPOSAL_THRESHOLD,),
+            ).fetchall())
         finally:
             conn.close()
         assert metrics["Proposals pending review"] == str(pending)
         captions = " ".join(str(c.value) for c in ran_app.caption)
-        # "proposed" terms already crossed the threshold and must not be counted.
+        # analyze marks a term "proposed" from its 2nd sighting, but a proposal
+        # needs TAXONOMY_PROPOSAL_THRESHOLD: terms between the two still count.
         assert f"{below} term(s) on the watchlist, still below" in captions
 
 
@@ -310,3 +315,16 @@ class TestPresalesKeepsSpacesWithoutAnOwningTeam:
         assert not app.exception
         counts = " ".join(str(m.value) for m in app.sidebar.markdown)
         assert f"**{len(presales_ids)} of " in counts, counts
+
+
+class TestGeographyFilterListsRegions:
+    """The enrichment prompt shows "Benelux (Netherlands, Belgium, Luxembourg)"
+    and the model handed that label back, so the comma-split filter offered
+    fragments such as "Ireland)". 46 of the 133 stored values were affected."""
+
+    def test_every_geography_option_is_a_region(self, ran_app):
+        from pipeline.config import GEOS
+
+        picker = next(m for m in ran_app.sidebar.multiselect if m.label == "Geography")
+        assert picker.options
+        assert set(picker.options) <= set(GEOS) | {"Unassigned"}

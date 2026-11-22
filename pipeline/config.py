@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from enum import Enum
 from dotenv import load_dotenv
 
@@ -63,6 +64,36 @@ GEOS = [
     "Americas",
 ]
 GEOS_PROMPT = "Benelux (Netherlands, Belgium, Luxembourg), Germany (Germany), Southern Europe (Italy, Spain, Portugal, Israel), DACH (Switzerland, Austria), UK & Ireland (United Kingdom, Ireland), Nordics (Norway, Sweden, Denmark, Finland, Iceland), Eastern Europe, Africa, Middle East, Asia Pacific, Americas"
+# Country names the prompt lists under each region ("Benelux (Netherlands,
+# Belgium, Luxembourg)"), read back from GEOS_PROMPT so the two cannot drift.
+_GEO_BY_NAME = {g.casefold(): g for g in GEOS}
+for _region, _countries in re.findall(r"([A-Za-z&][A-Za-z& ]*?) \(([^)]*)\)", GEOS_PROMPT):
+    for _country in _countries.split(","):
+        _GEO_BY_NAME.setdefault(_country.strip().casefold(), _region)
+_GEO_PARENTHETICAL = re.compile(r"\s*\([^)]*\)")
+
+
+def normalize_geography(raw):
+    """Reduce a geography answer to region names from GEOS, comma-joined, or None.
+
+    The enrichment prompt shows each region with its countries in parentheses,
+    and the model often hands the whole label back. Joined and split on commas,
+    "Benelux (Netherlands, Belgium, Luxembourg)" then became three filter
+    entries on the dashboard, two of them half a parenthesis. The parentheses
+    are dropped first, a country maps to its region, and anything that is not a
+    region is discarded, as `domain` is when it is off the list.
+    """
+    if raw is None:
+        return None
+    text = ", ".join(raw) if isinstance(raw, (list, tuple)) else str(raw)
+    regions = []
+    for part in _GEO_PARENTHETICAL.sub("", text).split(","):
+        region = _GEO_BY_NAME.get(part.strip().casefold())
+        if region and region not in regions:
+            regions.append(region)
+    return ", ".join(regions) or None
+
+
 HORIZONS = ["Now", "Next", "Later"]
 VERTICAL_SEEDS = {
     "Manufacturing": "private 5G edge AI manufacturing safety",
@@ -446,6 +477,7 @@ CAPABILITY_STATS = [
         "source": "orange-business.com homepage",
     },
 ]
+# Not read by any prompt yet: see "Limitations" in the README.
 PARTNER_TIERS = {
     "Cisco": "Global Gold Partner",
     "AWS": "Advanced Partner, MSP",
