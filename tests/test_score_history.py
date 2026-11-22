@@ -8,7 +8,7 @@ ever read through a copy.
 """
 import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ def conn():
 
 
 def _os(conn, label="OS001"):
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     cur = conn.execute(
         "INSERT INTO opportunity_spaces (label, run_id, vertical, use_case, technology, created_at) "
         "VALUES (?, 'r', 'Manufacturing', 'Energy Optimization', 'IoT Platforms', ?)", (label, now))

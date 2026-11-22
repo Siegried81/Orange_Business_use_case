@@ -36,6 +36,8 @@ from pipeline.config import (
     QUADRANTS,
     RECURRING_THEME_PROMOTION_THRESHOLD,
     STRONG_THRESHOLD,
+    TAXONOMY_PROPOSAL_THRESHOLD,
+    normalize_geography,
     quadrant,
 )
 
@@ -116,7 +118,10 @@ def load_scores():
     df["horizon"] = df["horizon"].fillna("Later")
     df["persona"] = df["persona"].fillna("Unassigned")
     df["buyer_persona"] = df["buyer_persona"].fillna("Unassigned")
-    df["geography"] = df["geography"].fillna("Unassigned")
+    # Stored values can still carry the countries the prompt listed in
+    # parentheses; the sidebar filter splits on commas, so they are reduced to
+    # region names here.
+    df["geography"] = df["geography"].map(normalize_geography).fillna("Unassigned")
     return (df, signals_by_os, total_os_count)
 
 
@@ -748,7 +753,7 @@ with tab_signals:
             )
             dated = dated.dropna(subset=["parsed_date"])
         if not dated.empty:
-            dated["month"] = dated["parsed_date"].dt.to_period("M").astype(str)
+            dated["month"] = dated["parsed_date"].dt.strftime("%Y-%m")
             monthly_counts = dated.groupby("month").size().rename("Signals")
             st.line_chart(monthly_counts, color="#ff7900")
         else:
@@ -827,13 +832,19 @@ st.caption(
     "themes, and the taxonomy grows from team-reviewed proposals."
 )
 # The same queries `radar_cli.py review` and `promote` run, so the counts
-# cannot drift from what those commands would act on. Only "pending" terms
-# are below the proposal threshold: "proposed" ones already crossed it.
+# cannot drift from what those commands would act on. The watchlist count is
+# the terms seen fewer times than a proposal needs; their status does not say
+# so, since `analyze` marks a term "proposed" from its second sighting while a
+# proposal is only written from TAXONOMY_PROPOSAL_THRESHOLD.
 growth_conn = get_connection()
 try:
     pending_proposals = get_proposals(growth_conn, "pending")
     promotable_themes = list_promotable_themes(growth_conn, RECURRING_THEME_PROMOTION_THRESHOLD)
-    watchlist_below_threshold = len(list_watchlist(growth_conn, status="pending"))
+    watchlist_below_threshold = sum(
+        t["frequency"] < TAXONOMY_PROPOSAL_THRESHOLD
+        for status in ("pending", "proposed")
+        for t in list_watchlist(growth_conn, status=status)
+    )
 except sqlite3.OperationalError:
     # A radar.db older than the taxonomy tables: show the rest of the page.
     pending_proposals = promotable_themes = None

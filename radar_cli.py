@@ -4,7 +4,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from difflib import SequenceMatcher
 from pipeline.db import (
     get_connection,
@@ -86,7 +86,7 @@ def cmd_delete(conn, labels):
         print("Cancelled -- nothing deleted.")
         return
     deleted = delete_opportunity_spaces(conn, labels)
-    not_found = [l for l in labels if l not in deleted]
+    not_found = [label for label in labels if label not in deleted]
     if deleted:
         print(f"Deleted: {', '.join(deleted)}")
     if not_found:
@@ -227,7 +227,7 @@ def cmd_calibrate(conn):
         n = len(overlap_counts)
         p50 = overlap_counts[n // 2]
         p90 = overlap_counts[min(n - 1, int(n * 0.9))]
-        exceeding = sum((1 for c in overlap_counts if c > current_top_n))
+        exceeding = sum(1 for c in overlap_counts if c > current_top_n)
         print(
             f"\nAcross {n} OS: median={p50}  90th percentile={p90}  max={max(overlap_counts)}  |  {exceeding} OS ({exceeding / n * 100:.0f}%) exceed the current top_n={current_top_n} and are having relevant signals cut."
         )
@@ -275,7 +275,7 @@ def cmd_dedupe(conn, apply=False):
     if not groups:
         print("No near-duplicate signals found.")
         return
-    total_removable = sum((len(g) - 1 for g in groups))
+    total_removable = sum(len(g) - 1 for g in groups)
     print(
         f"Found {len(groups)} duplicate groups, {total_removable} removable signals:\n"
     )
@@ -292,10 +292,11 @@ def cmd_dedupe(conn, apply=False):
         total = 0
         for group in groups:
             for dup in group[1:]:
-                conn.execute("DELETE FROM signals WHERE id = ?", (dup["id"],))
+                # Links first: with foreign keys on, a linked signal cannot go.
                 conn.execute(
                     "DELETE FROM opportunity_signals WHERE signal_id = ?", (dup["id"],)
                 )
+                conn.execute("DELETE FROM signals WHERE id = ?", (dup["id"],))
                 total += 1
         conn.commit()
         print(f"Deleted {total} near-duplicate signals.")
@@ -426,7 +427,7 @@ def cmd_themes(conn, output_path="candidate_opportunity_spaces.md"):
     run_id = new_run_id()
     lines = [
         "# Candidate Opportunity Spaces — unfiltered",
-        f"_Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} from current signals, no pre-selection applied._",
+        f"_Generated {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} from current signals, no pre-selection applied._",
     ]
     for vertical in verticals:
         print(f"Extracting themes for {vertical}...")
@@ -510,7 +511,7 @@ def cmd_summary(conn, output_path="opportunity_spaces_summary.md", top_n=None):
         header += f" -- {len(unscored)} not yet scored, see bottom of file"
     lines = [
         "# Innovation Radar — Opportunity Spaces Summary",
-        f"_Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}_",
+        f"_Generated {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}_",
         "",
         header + "._",
         "",

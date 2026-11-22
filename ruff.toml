@@ -1,0 +1,13 @@
+# Lint for the pipeline, dashboard, DAG and tests. Default rules (pycodestyle
+# errors, pyflakes) plus import-order-free bug finders; formatting is not enforced.
+target-version = "py312"
+line-length = 120
+extend-exclude = ["app/innovation_radar_dashboard.Report", "app/innovation_radar_dashboard.SemanticModel"]
+
+[lint]
+select = ["E", "F", "W", "B", "UP"]
+ignore = [
+    "E501",  # line length: not enforced, long SQL and f-strings are deliberate
+    "B905",  # zip() strictness: lengths are equal by construction
+    "UP042",  # str+Enum kept: StrEnum would change str() of the members
+]

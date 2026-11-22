@@ -13,4 +13,3 @@ plotly==7.1.0
 pandas==3.1.0
 # Reads the AHP pairwise-comparison sheet behind the attractiveness weights.
 openpyxl==3.1.5
-pytest==9.2.0

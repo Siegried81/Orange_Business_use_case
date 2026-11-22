@@ -247,7 +247,7 @@ class TestLlmEnrichFallback:
         result = scoring.llm_enrich(
             "Manufacturing", "Energy Optimization", "IoT Platforms", FAKE_SIGNALS
         )
-        assert result["geography"] == "Benelux" 
+        assert result["geography"] == "Benelux"
 
 class TestGroqKeyRotation:
     """GROQ_API_KEY to GROQ_API_KEY_5 are all read and tried in order on a
@@ -386,7 +386,7 @@ class TestPortfolioDistanceValidation:
     def test_every_declared_level_passes_through(self, monkeypatch):
         for level in scoring.PORTFOLIO_DISTANCE_LEVELS:
             monkeypatch.setattr(
-                scoring, "get_llm_json", lambda *a, **k: self._result(level)
+                scoring, "get_llm_json", lambda *a, level=level, **k: self._result(level)
             )
             distance, _, _, justification = scoring.llm_right_to_win(
                 "Manufacturing", "Energy Optimization", "IoT Platforms"

@@ -16,11 +16,13 @@ import os
 import re
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from pipeline.config import normalize_geography  # noqa: E402
 DB_PATH = os.path.join(ROOT, "radar.db")
 OUT_DIR = os.path.join(ROOT, "app", "powerbi_data")
 MODEL_PATH = os.path.join(
@@ -45,11 +47,11 @@ def to_iso(value):
             pass
     if dt is None:
         try:
-            dt = datetime.strptime(text, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+            dt = datetime.strptime(text, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
         except ValueError:
             return ""
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -152,6 +154,17 @@ def clean_signal(row):
     row["summary"] = re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
+def clean_space(row):
+    """Reduce `geography` to region names, as the dashboard does on load.
+
+    radar.db still holds values like "Benelux (Netherlands, Belgium,
+    Luxembourg)"; read raw, Power BI would show the country fragments. The
+    database itself is left as it is, so every reader goes through
+    normalize_geography. An empty result is exported as an empty cell.
+    """
+    row["geography"] = normalize_geography(row["geography"]) or ""
+
+
 def model_data_folder(model_path=MODEL_PATH):
     """Return the DataFolder path stored in the Power BI model, or None.
 
@@ -200,7 +213,7 @@ def main():
     conn = sqlite3.connect(Path(DB_PATH).as_uri() + "?mode=ro", uri=True)
     print(f"Exporting {DB_PATH} -> {OUT_DIR}")
 
-    export_query(conn, "opportunity_spaces", OPPORTUNITY_SPACES_SQL)
+    export_query(conn, "opportunity_spaces", OPPORTUNITY_SPACES_SQL, extra=clean_space)
     scores = export_query(conn, "latest_scores", LATEST_SCORES_SQL)
     export_query(
         conn, "signals", SIGNALS_SQL, extra=clean_signal, added_columns=("published_on",)
@@ -217,7 +230,7 @@ def main():
     })
     write_csv("opportunity_assets", ["opportunity_space_id", "asset"], asset_rows)
 
-    write_csv("export_info", ["exported_at"], [[to_iso(datetime.now(timezone.utc).isoformat())]])
+    write_csv("export_info", ["exported_at"], [[to_iso(datetime.now(UTC).isoformat())]])
     conn.close()
     check_data_folder()
 

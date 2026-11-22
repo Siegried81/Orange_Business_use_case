@@ -42,28 +42,11 @@ def summary(conn):
     print(f"\nTOTAL signals in database: {total}")
 
 
-def dump_titles(conn, vertical=None, signal_type=None, limit=100):
-    query = "SELECT source_name, signal_type, title FROM signals WHERE 1=1"
-    params = []
-    if vertical:
-        query += " AND vertical_hint = ?"
-        params.append(vertical)
-    if signal_type:
-        query += " AND signal_type = ?"
-        params.append(signal_type)
-    query += " ORDER BY signal_type, collected_at DESC LIMIT ?"
-    params.append(limit)
-    rows = conn.execute(query, params).fetchall()
-    for r in rows:
-        print(f"[{r['signal_type']:14}] ({r['source_name']}) {r['title']}")
-    print(f"\n{len(rows)} titles shown.")
-
-
 THEME_EXTRACTION_SYSTEM_PROMPT = 'You are analyzing market signals (news, research\npapers, vendor announcements, regulation) collected for one business vertical, to spot\ncandidate Opportunity Spaces for a B2B telecom/cloud provider (Orange Business).\n\nAn Opportunity Space = Vertical x Use Case x Technology, and must be SPECIFIC\n(e.g. "Manufacturing x Energy Optimization x Computer Vision"), never a generic\ntheme like "AI in industry" or "Cloud adoption".\n\nIMPORTANT: use_case and technology MUST be picked EXACTLY from these closed lists --\ndo not invent new terms, do not rephrase them:\n\nUse cases: {use_cases}\nTechnologies: {technologies}\n\nIf a real, recurring pattern in the signals genuinely does NOT fit any combination\nof the lists above, do NOT force it into a bad match. Instead put it in\nwatchlist_candidates so the team can review it for adding to the taxonomy later.\n\nRead the signal titles below and respond with ONLY a JSON object, no preamble,\nno markdown fences:\n{{\n  "themes": [\n    {{"use_case": "<exact match from the list>", "technology": "<exact match from the list>",\n      "supporting_signal_count": <int>, "rationale": "<one sentence>"}}\n  ],\n  "watchlist_candidates": [\n    {{"term": "<the new term you couldn\'t classify>", "category": "use_case"|"technology",\n      "rationale": "<why this looks like a real pattern despite not fitting the taxonomy>"}}\n  ]\n}}\nthemes: 3-6 items max, reject anything generic or supported by only one vague signal.\nwatchlist_candidates: only include genuinely recurring patterns, not one-off mentions.'
 
 
 def _call_theme_extraction_llm(vertical, rows):
-    titles = "\n".join((f"- [{r['signal_type']}] {r['title']}" for r in rows))
+    titles = "\n".join(f"- [{r['signal_type']}] {r['title']}" for r in rows)
     prompt = f"Vertical: {vertical}\n\nSignals:\n{titles}"
     system_prompt = THEME_EXTRACTION_SYSTEM_PROMPT.format(
         use_cases=", ".join(USE_CASES_TAXONOMY),
@@ -113,8 +96,8 @@ def extract_themes(conn, vertical, max_signals=40):
     if not result or "themes" not in result:
         print(f"[{vertical}] theme extraction failed or returned nothing usable")
         return ([], [])
-    themes = result.get("themes", [])
-    candidates = result.get("watchlist_candidates", [])
+    themes = result.get("themes") or []
+    candidates = result.get("watchlist_candidates") or []
     valid_themes, watchlist_entries, skipped_generic = _classify_themes(
         themes, candidates
     )

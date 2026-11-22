@@ -1,0 +1,6 @@
+# Development and CI only: tests and lint. The production image
+# (Dockerfile, last stage) installs requirements.txt alone.
+-r requirements.txt
+pytest==9.2.0
+pytest-cov==7.1.0
+ruff==0.17.6

@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 import pytest
 from pipeline.scoring import (
     novelty_momentum,
@@ -44,7 +44,7 @@ def _insert_opportunity_space(
     use_case="Energy Optimization",
     technology="IoT Platforms",
 ):
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     cur = conn.execute(
         "INSERT INTO opportunity_spaces (label, run_id, vertical, use_case, technology, created_at) VALUES (?, 'test-run', ?, ?, ?, ?)",
         (label, vertical, use_case, technology, now),
@@ -54,7 +54,7 @@ def _insert_opportunity_space(
 
 
 def _insert_score(conn, os_id, total_score=7.0):
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     conn.execute(
         "INSERT INTO scores (opportunity_space_id, market_signal_strength, source_diversity, evidence_quality, novelty_momentum, strategic_relevance, urgency_score, total_score, computed_at) VALUES (?, 5, 5, 5, 5, 5, 5, ?, ?)",
         (os_id, total_score, now),
@@ -63,7 +63,7 @@ def _insert_score(conn, os_id, total_score=7.0):
 
 
 def _insert_right_to_win(conn, os_id, right_to_win_score=6.0):
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     conn.execute(
         "INSERT INTO right_to_win_scores (opportunity_space_id, portfolio_distance, right_to_win_score, matched_assets, justification, computed_at) VALUES (?, 'L1', ?, 'API X', 'test', ?)",
         (os_id, right_to_win_score, now),
@@ -77,12 +77,12 @@ class TestNoveltyMomentum:
         assert novelty_momentum([]) == 0.0
 
     def test_fewer_than_three_signals_returns_neutral(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         signals = [_signal(1, now), _signal(2, now)]
         assert novelty_momentum(signals) == 5.0
 
     def test_recent_burst_scores_higher_than_even_spread(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         spread_even = [
             _signal(d, now) for d in (90, 80, 70, 60, 50, 40, 30, 20, 10, 5, 2, 1)
         ]
@@ -92,12 +92,12 @@ class TestNoveltyMomentum:
         assert burst_score > spread_score
 
     def test_all_signals_stale_scores_low(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale = [_signal(d, now) for d in (200, 201, 202, 203, 204, 205)]
         assert novelty_momentum(stale) < 2.0
 
     def test_malformed_date_is_skipped_not_fatal(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         signals = [
             _signal(1, now),
             _signal(2, now),
@@ -109,7 +109,7 @@ class TestNoveltyMomentum:
         assert isinstance(result, float)
 
     def test_clock_skew_returns_neutral(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         future_signals = [_signal(-5, now), _signal(-4, now), _signal(-3, now)]
         assert novelty_momentum(future_signals) == 5.0
 
@@ -261,19 +261,19 @@ class TestUrgencyScalingPoint:
         signals = [
             {
                 "signal_type": "regulation",
-                "collected_at": datetime.now(timezone.utc).isoformat(),
+                "collected_at": datetime.now(UTC).isoformat(),
             }
         ]
         assert _urgency_weighted(signals) == 1.0
 
     def test_non_urgent_signal_type_contributes_nothing(self):
         signals = [
-            _signal_row(1, datetime.now(timezone.utc), signal_type="market_move")
+            _signal_row(1, datetime.now(UTC), signal_type="market_move")
         ]
         assert _urgency_weighted(signals) == 0.0
 
     def test_scaling_point_never_exceeds_the_real_maximum(self, db_conn):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for i, n_regs in enumerate([0, 1, 2, 3, 10]):
             os_id = _insert_opportunity_space(db_conn, f"OS{i:03d}")
             for j in range(n_regs):
@@ -298,7 +298,7 @@ class TestUrgencyScalingPoint:
     def test_higher_weighted_signals_score_higher_urgency_at_a_fixed_scaling_point(
         self,
     ):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         few = [{"signal_type": "regulation", "collected_at": now.isoformat()}]
         many = [
             {"signal_type": "regulation", "collected_at": now.isoformat()}
@@ -309,7 +309,7 @@ class TestUrgencyScalingPoint:
         )
 
     def test_urgency_score_is_capped_at_ten(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         way_more_than_scaling_point = [
             {"signal_type": "regulation", "collected_at": now.isoformat()}
             for _ in range(50)
@@ -322,7 +322,7 @@ class TestNoveltyInUrgency:
     def test_trending_os_scores_higher_urgency_than_flat_os_with_same_signal_count(
         self, db_conn
     ):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         trending_id = _insert_opportunity_space(db_conn, "OS_TRENDING")
         for i, age in enumerate([90, 5, 3, 2, 1]):
             _insert_and_link_signal(
@@ -341,7 +341,7 @@ class TestNoveltyInUrgency:
         assert _urgency_weighted(trending_signals) > _urgency_weighted(flat_signals)
 
     def test_novelty_contribution_requires_at_least_three_signals(self, db_conn):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         os_id = _insert_opportunity_space(db_conn, "OS_SMALL")
         for i, age in enumerate([5, 1]):
             _insert_and_link_signal(
@@ -354,7 +354,7 @@ class TestNoveltyInUrgency:
         ), "2 non-urgent signals must contribute exactly 0 -- the novelty term must not fire below the 3-signal guard"
 
     def test_novelty_and_regulation_contributions_add_up(self, db_conn):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reg_plus_burst_id = _insert_opportunity_space(db_conn, "OS_REG_BURST")
         _insert_and_link_signal(
             db_conn, reg_plus_burst_id, "http://rb/reg", "regulation", 1, now
@@ -384,7 +384,7 @@ class TestNoveltyInUrgency:
 class TestRefreshDeterministicScores:
 
     def test_score_moves_when_new_signals_are_linked(self, db_conn):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         os_id = _insert_opportunity_space(db_conn, "OS001")
         for i in range(3):
             _insert_and_link_signal(
@@ -403,7 +403,7 @@ class TestRefreshDeterministicScores:
         assert after["total_score"] != before["total_score"]
 
     def test_llm_fields_are_never_touched(self, db_conn):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         os_id = _insert_opportunity_space(db_conn, "OS002")
         for i in range(3):
             _insert_and_link_signal(
@@ -424,7 +424,7 @@ class TestRefreshDeterministicScores:
         # `scores` holds one row per opportunity space: insert_score() updates
         # it in place and clean_scores() prunes anything older, so a refresh
         # must not add a second row.
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         os_id = _insert_opportunity_space(db_conn, "OS003")
         for i in range(3):
             _insert_and_link_signal(
@@ -907,7 +907,7 @@ class TestRescueUsesTheRunScalingPoint:
         from pipeline.db import migrate_schema
 
         migrate_schema(db_conn)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         real = {"market_signal_strength": 5, "source_diversity": 5, "evidence_quality": 5,
                 "novelty_momentum": 5, "strategic_relevance": 5}
         ids = []

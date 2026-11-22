@@ -6,7 +6,7 @@ derives from the committed radar.db (read-only), so the two cannot drift apart.
 """
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
@@ -45,7 +45,7 @@ def _space(conn, label, use_case, technology):
     conn.execute(
         "INSERT INTO opportunity_spaces (label, run_id, vertical, use_case, technology, created_at) "
         "VALUES (?, 'test-run', 'Retail', ?, ?, ?)",
-        (label, use_case, technology, datetime.now(timezone.utc).isoformat()),
+        (label, use_case, technology, datetime.now(UTC).isoformat()),
     )
     conn.commit()
 

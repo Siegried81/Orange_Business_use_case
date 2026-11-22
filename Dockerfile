@@ -1,19 +1,22 @@
 # Container image for the Innovation Radar dashboard (Streamlit) and pipeline.
 #
 # Why it is built this way:
-# - python:3.15-slim: a small Debian base with wheels for every pinned
+# - python:3.12-slim: a small Debian base with wheels for every pinned
 #   dependency (pandas, plotly, streamlit), so no compiler is installed.
-#   CI runs pytest on Python 3.12, then the docker job runs the same suite
-#   inside this image, so the Python version here is tested too.
+#   CI runs pytest on Python 3.12 too, then the docker job runs the same suite
+#   inside the `test` stage of this file (same Python, plus pytest).
 # - requirements.txt is installed BEFORE the source is copied, so a code change
 #   rebuilds only the last, cheap layer.
+# - Two stages: `test` adds requirements-dev.txt (pytest, ruff) on top of the
+#   runtime packages and is only built in CI (`--target test`); the last stage,
+#   built by default and by Render, carries no test tooling.
 # - The app runs as an unprivileged user, so a dependency or a prompt gone
 #   wrong cannot write outside /app.
 # - radar.db travels in the image (it is committed), so the dashboard works
 #   with no volume; docker-compose.yml mounts the host copy over it to show
 #   the latest pipeline run instead. Secrets come from .env at run time only:
 #   .dockerignore keeps it out of the image.
-FROM python:3.15-slim
+FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -27,6 +30,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+# Test image: runtime packages + dev tools. Not the default target.
+FROM base AS test
+COPY requirements-dev.txt .
+RUN pip install -r requirements-dev.txt
+
+# Production image (last stage = default build target).
+FROM base AS prod
 RUN useradd --create-home --uid 10001 app
 COPY --chown=app:app . .
 USER app
